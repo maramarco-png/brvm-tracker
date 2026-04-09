@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="theme-color" content="#0A0F1E"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="BRVM Tracker"/>
+<title>BRVM Tracker</title>
+
+<!-- PWA Manifest inline via blob (works as single file) -->
+<script>
+const manifest = {
+  name: "BRVM Signal Tracker",
+  short_name: "BRVM",
+  description: "Tracker de signaux BRVM - détecteur de +30%",
+  start_url: "./",
+  display: "standalone",
+  background_color: "#0A0F1E",
+  theme_color: "#0A0F1E",
+  orientation: "portrait-primary",
+  icons: [
+    { src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230A0F1E'/><text y='.9em' font-size='80'>📈</text></svg>", sizes: "192x192", type: "image/svg+xml" },
+    { src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230A0F1E'/><text y='.9em' font-size='80'>📈</text></svg>", sizes: "512x512", type: "image/svg+xml" }
+  ]
+};
+const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+const url = URL.createObjectURL(blob);
+const link = document.createElement('link');
+link.rel = 'manifest'; link.href = url;
+document.head.appendChild(link);
+</script>
+
+<style>
+:root {
+  --bg: #0A0F1E;
+  --panel: #111827;
+  --panel2: #1A2235;
+  --border: #1E2D42;
+  --accent: #00C9FF;
+  --gold: #F59E0B;
+  --green: #10B981;
+  --orange: #F97316;
+  --red: #EF4444;
+  --purple: #A78BFA;
+  --text: #E2E8F0;
+  --muted: #64748B;
+  --radius: 14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100%;overflow-x:hidden}
+
+/* ── NAV ── */
+.nav{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--border);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px 8px;border:none;background:none;color:var(--muted);font-size:10px;cursor:pointer;transition:color .2s}
+.nav-btn.active{color:var(--accent)}
+.nav-icon{font-size:20px}
+
+/* ── PAGES ── */
+.page{display:none;padding:16px 16px 90px;max-width:600px;margin:0 auto;min-height:100vh}
+.page.active{display:block}
+
+/* ── HEADER ── */
+.page-header{margin-bottom:20px;padding-top:8px}
+.page-header h1{font-size:20px;font-weight:700;letter-spacing:-.3px}
+.page-header p{color:var(--muted);font-size:12px;margin-top:3px}
+
+/* ── CARDS ── */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.card-row{display:flex;justify-content:space-between;align-items:center}
+
+/* ── SUMMARY CHIPS ── */
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.chip{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center}
+.chip-val{font-size:24px;font-weight:700}
+.chip-lbl{font-size:10px;color:var(--muted);margin-top:2px}
+.chip.c-green{border-color:var(--green)} .chip.c-green .chip-val{color:var(--green)}
+.chip.c-orange{border-color:var(--orange)} .chip.c-orange .chip-val{color:var(--orange)}
+.chip.c-accent{border-color:var(--accent)} .chip.c-accent .chip-val{color:var(--accent)}
+
+/* ── ALERT BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-accum{background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.4)}
+.badge-momentum{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.4)}
+.badge-cassure{background:rgba(245,158,11,.15);color:var(--gold);border:1px solid rgba(245,158,11,.4)}
+.badge-neutral{background:rgba(100,116,139,.1);color:var(--muted);border:1px solid var(--border)}
+.badge-buy{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.4)}
+.badge-watch{background:rgba(249,115,22,.15);color:var(--orange);border:1px solid rgba(249,115,22,.4)}
+
+/* ── SCORE BAR ── */
+.score-wrap{display:flex;align-items:center;gap:8px}
+.score-bar{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.score-fill{height:100%;border-radius:3px;transition:width .4s}
+.score-num{font-size:12px;font-weight:700;min-width:28px;text-align:right}
+
+/* ── STOCK LIST ── */
+.stock-item{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .2s}
+.stock-item:hover,.stock-item:active{border-color:var(--accent)}
+.stock-item.highlight-accum{border-left:3px solid var(--purple)}
+.stock-item.highlight-momentum{border-left:3px solid var(--green)}
+.stock-item.highlight-cassure{border-left:3px solid var(--gold)}
+.stock-name{font-weight:600;font-size:14px}
+.stock-meta{display:flex;gap:10px;margin-top:4px;font-size:11px;color:var(--muted)}
+.stock-price{font-size:18px;font-weight:700}
+.var-pos{color:var(--green)} .var-neg{color:var(--red)} .var-zero{color:var(--muted)}
+
+/* ── FORMS ── */
+.form-group{margin-bottom:14px}
+.form-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;display:block}
+.form-input{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:15px;outline:none;transition:border-color .2s}
+.form-input:focus{border-color:var(--accent)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+select.form-input option{background:var(--panel)}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 20px;border-radius:10px;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;width:100%}
+.btn-primary{background:var(--accent);color:var(--bg)}
+.btn-primary:active{background:#33D4FF}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.btn-secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+.btn-sm{padding:8px 14px;font-size:12px;width:auto}
+
+/* ── DETAIL PANEL ── */
+.detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;overflow-y:auto;padding:20px 16px 40px}
+.detail-overlay.open{display:block}
+.detail-card{background:var(--panel);border-radius:20px;padding:20px;max-width:500px;margin:0 auto}
+.detail-close{float:right;background:var(--panel2);border:none;color:var(--text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px}
+.detail-title{font-size:18px;font-weight:700;margin-bottom:4px}
+.history-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.history-row:last-child{border-bottom:none}
+
+/* ── PRICE TARGET ── */
+.target-box{background:var(--panel2);border-radius:12px;padding:14px;margin-top:12px}
+.target-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0}
+.target-label{font-size:12px;color:var(--muted)}
+.target-val{font-size:14px;font-weight:700}
+
+/* ── SIGNAL DETAILS ── */
+.sig-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.sig-row:last-child{border-bottom:none}
+.sig-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.sig-ok{background:rgba(16,185,129,.15)} .sig-ko{background:rgba(100,116,139,.1)}
+.sig-text{flex:1;font-size:12px}
+.sig-text strong{font-size:13px;display:block}
+
+/* ── SETTINGS ── */
+.settings-item{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
+.settings-item:last-child{border-bottom:none}
+.settings-label{font-size:14px}
+.settings-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.toggle{position:relative;width:44px;height:24px;background:var(--border);border-radius:12px;cursor:pointer;transition:background .2s}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
+.toggle.on::after{transform:translateX(20px)}
+
+/* ── INSTALL BANNER ── */
+.install-banner{background:linear-gradient(135deg,#0D1929,#1A2235);border:1px solid var(--accent);border-radius:var(--radius);padding:14px;margin-bottom:16px;display:none}
+.install-banner.show{display:block}
+.install-banner h3{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px}
+.install-banner p{font-size:11px;color:var(--muted);margin-bottom:10px}
+.install-steps{font-size:11px;color:var(--text);line-height:1.8}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;transition:all .3s;z-index:300;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty h3{font-size:16px;color:var(--text);margin-bottom:6px}
+.empty p{font-size:13px}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:6px;margin-bottom:16px;background:var(--panel);border-radius:10px;padding:4px}
+.tab{flex:1;padding:8px;border:none;background:none;color:var(--muted);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.tab.active{background:var(--accent);color:var(--bg)}
+
+/* ── SECTION TITLE ── */
+.section-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:16px 0 10px}
+
+/* ── CHART MINI ── */
+.mini-chart{display:flex;align-items:flex-end;gap:3px;height:40px;margin-top:8px}
+.mini-bar{flex:1;border-radius:2px 2px 0 0;transition:height .3s;min-height:2px}
+
+/* ── BOC DROP ZONE ── */
+.boc-drop {
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  padding: 40px 20px; text-align: center; cursor: pointer;
+  background: var(--panel); transition: all .2s; margin-bottom: 14px;
+}
+.boc-drop:hover, .boc-drop.drag { border-color: var(--accent); background: #0D1929; }
+.boc-file-chip { display:inline-flex;align-items:center;gap:8px;background:#0D1929;border:1px solid var(--accent);border-radius:8px;padding:8px 14px;margin-top:10px;font-size:12px;color:var(--accent); }
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- ════════════ PAGES ════════════ -->
+
+<!-- PAGE 1: TABLEAU DE BORD -->
+<div class="page active" id="page-dashboard">
+  <div class="page-header">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <h1>📈 BRVM Tracker</h1>
+        <p id="dash-date">Chargement…</p>
+      </div>
+      <button id="refresh-btn" onclick="refreshBRVM()" style="background:var(--accent);color:var(--bg);border:none;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;flex-shrink:0;margin-top:4px">
+        <span id="refresh-icon">🔄</span>
+        <span id="refresh-label">Actualiser</span>
+      </button>
+    </div>
+    <div id="last-refresh-info" style="font-size:11px;color:var(--muted);margin-top:4px;display:none"></div>
+  </div>
+
+  <div id="install-banner" class="install-banner">
+    <h3>📲 Installer l'application</h3>
+    <p>Pour utiliser hors ligne et depuis ton bureau / téléphone :</p>
+    <div class="install-steps" id="install-steps"></div>
+    <button class="btn btn-primary" style="margin-top:10px" onclick="installPWA()" id="install-btn-banner">⬇️ Installer maintenant</button>
+  </div>
+
+  <div class="chips">
+    <div class="chip c-accent"><div class="chip-val" id="total-stocks">0</div><div class="chip-lbl">Actions</div></div>
+    <div class="chip c-green"><div class="chip-val" id="alert-count">0</div><div class="chip-lbl">Alertes</div></div>
+    <div class="chip c-orange"><div class="chip-val" id="watch-count">0</div><div class="chip-lbl">À suivre</div></div>
+  </div>
+
+  <!-- Alertes prioritaires -->
+  <div id="alerts-section"></div>
+
+  <div class="section-title">Toutes les actions</div>
+  <div id="all-stocks-list"></div>
+
+  <div id="empty-dash" class="empty" style="display:none">
+    <div class="empty-icon">📊</div>
+    <h3>Aucune action suivie</h3>
+    <p>Va dans <strong>Gérer</strong> pour ajouter tes premières actions BRVM</p>
+  </div>
+</div>
+
+<!-- PAGE 2: SAISIE QUOTIDIENNE -->
+<div class="page" id="page-saisie">
+  <div class="page-header">
+    <h1>✏️ Saisie du jour</h1>
+    <p id="saisie-date"></p>
+  </div>
+
+  <div class="card" id="saisie-select-card">
+    <div class="form-group">
+      <label class="form-label">Action à mettre à jour</label>
+      <select class="form-input" id="select-stock">
+        <option value="">-- Choisir une action --</option>
+      </select>
+    </div>
+    <div class="form-row3">
+      <div class="form-group">
+        <label class="form-label">Clôture</label>
+        <input class="form-input" type="number" id="input-close" placeholder="ex: 17500" step="1"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Volume</label>
+        <input class="form-input" type="number" id="input-volume" placeholder="ex: 2400" step="1"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Var. %</label>
+        <input class="form-input" type="number" id="input-var" placeholder="ex: +1.5" step="0.01"/>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveEntry()">💾 Enregistrer</button>
+  </div>
+
+  <div class="section-title">Saisies récentes</div>
+  <div id="recent-entries"></div>
+</div>
+
+<!-- PAGE 3: SIGNAUX & ALERTES -->
+<div class="page" id="page-signaux">
+  <div class="page-header">
+    <h1>🎯 Signaux & Alertes</h1>
+    <p>Classements croisés — prix · durée · rendement</p>
+  </div>
+
+  <div class="tabs" style="overflow-x:auto;flex-wrap:nowrap;gap:4px">
+    <button class="tab active" onclick="filterSignal('composite',this)" style="white-space:nowrap">🏆 Croisé</button>
+    <button class="tab" onclick="filterSignal('rendement',this)" style="white-space:nowrap">💰 Rendement</button>
+    <button class="tab" onclick="filterSignal('duree',this)" style="white-space:nowrap">⏳ Durée</button>
+    <button class="tab" onclick="filterSignal('prix',this)" style="white-space:nowrap">📈 Prix</button>
+    <button class="tab" onclick="filterSignal('all',this)" style="white-space:nowrap">Tous</button>
+  </div>
+
+  <!-- Legend -->
+  <div id="ranking-legend" style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:8px 12px;background:var(--panel);border-radius:8px;border:1px solid var(--border)"></div>
+
+  <div id="signals-list"></div>
+</div>
+
+<!-- PAGE 4: GÉRER -->
+<div class="page" id="page-gerer">
+  <div class="page-header">
+    <h1>⚙️ Gérer</h1>
+    <p>Ajouter/supprimer des actions, paramètres</p>
+  </div>
+
+  <!-- Import BRVM complet -->
+  <div class="card" style="border-color:var(--accent);margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div style="font-size:28px">⚡</div>
+      <div>
+        <div style="font-weight:700;font-size:14px;color:var(--accent)">Import automatique BRVM</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Ajoute toutes les actions cotées en 1 clic</div>
+      </div>
+    </div>
+    <div id="import-brvm-status" style="font-size:12px;color:var(--muted);margin-bottom:10px">45 actions · 8 secteurs · Côte d'Ivoire, Sénégal, Burkina, Togo, Mali, Bénin</div>
+    <button class="btn btn-primary" onclick="importAllBRVM()">🌍 Importer toutes les actions BRVM</button>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="margin-top:0">Ajouter une action manuellement</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Nom</label>
+        <input class="form-input" id="new-stock-name" placeholder="ex: SONATEL SN"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ticker</label>
+        <input class="form-input" id="new-stock-ticker" placeholder="ex: SNTS"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Cours initial</label>
+        <input class="form-input" type="number" id="new-stock-price" placeholder="Dernier cours"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Secteur</label>
+        <select class="form-input" id="new-stock-sector">
+          <option value="Télécom">Télécom</option>
+          <option value="Finance">Finance</option>
+          <option value="Industrie">Industrie</option>
+          <option value="Agro">Agro-industrie</option>
+          <option value="Distribution">Distribution</option>
+          <option value="Energie">Énergie</option>
+          <option value="Autre">Autre</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="addStock()">➕ Ajouter</button>
+  </div>
+
+  <div class="section-title">Actions suivies <span id="stocks-count" style="color:var(--accent)"></span></div>
+  <div id="manage-list"></div>
+
+  <div class="section-title" style="margin-top:24px">Paramètres</div>
+  <div class="card">
+    <div class="settings-item">
+      <div>
+        <div class="settings-label">🎯 Objectif de gain</div>
+        <div class="settings-sub" id="target-sub">Stop-loss calculé automatiquement</div>
+      </div>
+      <select class="form-input" style="width:80px" id="setting-target" onchange="onTargetChange()">
+        <option value="20">+20%</option>
+        <option value="25">+25%</option>
+        <option value="30" selected>+30%</option>
+        <option value="40">+40%</option>
+        <option value="50">+50%</option>
+      </select>
+    </div>
+    <div class="settings-item" style="background:rgba(239,68,68,.05);border-radius:8px;padding:10px;margin:4px 0">
+      <div>
+        <div class="settings-label">🔴 Stop-loss automatique</div>
+        <div class="settings-sub" id="stop-auto-info">Lié à l'objectif (règle 1/3)</div>
+      </div>
+      <div id="stop-display" style="font-size:16px;font-weight:700;color:var(--red)"></div>
+    </div>
+    <div class="settings-item">
+      <div>
+        <div class="settings-label">⏳ Fenêtre momentum</div>
+        <div class="settings-sub">Durée max avant sortie forcée</div>
+      </div>
+      <select class="form-input" style="width:90px" id="setting-window" onchange="onWindowChange()">
+        <option value="10">10 séances</option>
+        <option value="15">15 séances</option>
+        <option value="20" selected>20 séances</option>
+        <option value="30">30 séances</option>
+      </select>
+    </div>
+    <div class="settings-item" style="border-bottom:none">
+      <div>
+        <div class="settings-label">📲 Installer l'app</div>
+        <div class="settings-sub">Bureau & Android hors ligne</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="showInstallGuide()">Guide</button>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top:24px">💾 Sauvegarde & Restauration</div>
+  <div class="card" id="backup-card">
+    <!-- Status sauvegarde -->
+    <div class="settings-item">
+      <div>
+        <div class="settings-label">Dernière sauvegarde</div>
+        <div class="settings-sub" id="last-backup-info">Jamais sauvegardé</div>
+      </div>
+      <div id="backup-status-icon" style="font-size:20px">⚪</div>
+    </div>
+    <!-- Sauvegarde auto -->
+    <div class="settings-item">
+      <div>
+        <div class="settings-label">Sauvegarde automatique</div>
+        <div class="settings-sub">Téléchargement auto chaque lundi</div>
+      </div>
+      <div class="toggle on" id="toggle-autobackup" onclick="toggleAutoBackup()"></div>
+    </div>
+    <!-- Export manuel -->
+    <div class="settings-item">
+      <div>
+        <div class="settings-label">📤 Exporter maintenant</div>
+        <div class="settings-sub">Télécharge un fichier .json de sauvegarde</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="exportData()">Exporter</button>
+    </div>
+    <!-- Import -->
+    <div class="settings-item" style="border-bottom:none">
+      <div>
+        <div class="settings-label">📥 Restaurer une sauvegarde</div>
+        <div class="settings-sub">Importe un fichier .json sauvegardé</div>
+      </div>
+      <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+        Importer
+        <input type="file" accept=".json" style="display:none" onchange="importData(event)"/>
+      </label>
+    </div>
+  </div>
+
+  <!-- Bannière rappel sauvegarde -->
+  <div id="backup-reminder" style="display:none;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.4);border-radius:var(--radius);padding:14px;margin-bottom:12px">
+    <div style="font-weight:700;color:var(--gold);margin-bottom:4px">⏰ Sauvegarde recommandée</div>
+    <div style="font-size:12px;color:var(--muted)" id="backup-reminder-text"></div>
+    <button class="btn btn-primary" style="margin-top:10px" onclick="exportData()">💾 Sauvegarder maintenant</button>
+  </div>
+
+  <div style="height:20px"></div>
+  <button class="btn btn-danger" onclick="clearAllData()">🗑️ Effacer toutes les données</button>
+</div>
+
+<!-- PAGE 5: SCAN BOC -->
+<div class="page" id="page-boc">
+  <div class="page-header">
+    <h1>📄 Scanner le BOC</h1>
+    <p>Upload ton PDF → extraction et mise à jour automatiques</p>
+  </div>
+
+  <!-- Clé API -->
+  <div id="api-key-section" class="card" style="margin-bottom:14px;border-color:var(--gold)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="font-size:22px">🔑</div>
+      <div>
+        <div style="font-weight:700;font-size:13px;color:var(--gold)">Clé API Anthropic requise</div>
+        <div style="font-size:11px;color:var(--muted)">Nécessaire pour lire les BOC hors de Claude.ai</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <input class="form-input" type="password" id="api-key-input" placeholder="sk-ant-api03-..." style="flex:1;font-size:12px"/>
+      <button class="btn btn-secondary btn-sm" onclick="saveApiKey()" style="white-space:nowrap">💾 Sauver</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">
+      Obtenir ta clé → <strong style="color:var(--gold)">console.anthropic.com</strong> → API Keys → Create Key<br>
+      <span style="color:var(--green)">✅ La clé est stockée uniquement sur ton appareil</span>
+    </div>
+    <div id="api-key-status" style="margin-top:6px;font-size:12px"></div>
+  </div>
+
+  <!-- Drop zone -->
+  <div id="boc-dropzone" class="boc-drop" ondragover="bocDragOver(event)" ondragleave="bocDragLeave()" ondrop="bocDrop(event)">
+    <input type="file" accept="application/pdf" id="boc-file-input" style="display:none" onchange="bocFileSelected(event)"/>
+    <div class="drop-icon">📄</div>
+    <div id="boc-drop-title" style="font-size:16px;font-weight:700;margin-bottom:6px">Dépose ton BOC ici</div>
+    <div id="boc-drop-sub" style="font-size:12px;color:var(--muted)">ou clique pour choisir le fichier PDF</div>
+    <button class="btn btn-primary" style="margin-top:14px;width:auto;padding:10px 24px" onclick="document.getElementById('boc-file-input').click()">📂 Choisir le BOC</button>
+  </div>
+
+  <!-- Status bar -->
+  <div id="boc-status-bar" style="display:none" class="card" >
+    <div style="display:flex;align-items:center;gap:10px">
+      <div id="boc-spinner" style="width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0"></div>
+      <div id="boc-status-text" style="font-size:13px;font-weight:500;color:var(--accent)"></div>
+    </div>
+    <div id="boc-progress-wrap" style="margin-top:10px;display:none">
+      <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+        <div id="boc-progress-fill" style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .4s"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results preview -->
+  <div id="boc-results" style="display:none">
+    <div class="section-title">📋 Données extraites du BOC</div>
+    <div id="boc-results-summary" class="chips" style="margin-bottom:12px"></div>
+    <div id="boc-results-list"></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-primary" onclick="bocApplyData()">✅ Enregistrer dans l'app</button>
+      <button class="btn btn-secondary" style="width:auto;padding:12px 16px" onclick="bocReset()">↩️ Annuler</button>
+    </div>
+  </div>
+
+  <!-- Help -->
+  <div class="card" style="margin-top:16px;border-color:var(--border)">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">💡 Comment ça marche</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.8">
+      1. Télécharge le BOC depuis <strong style="color:var(--text)">brvm.org</strong><br>
+      2. Uploade le PDF ici<br>
+      3. L'IA extrait cours, volume, variation pour chaque action<br>
+      4. Les données sont ajoutées à ton historique en 1 clic<br><br>
+      <strong style="color:var(--text)">⚠️ Format :</strong> PDF complet tel que téléchargé depuis la BRVM<br>
+      <strong style="color:var(--text)">📅 Semaines :</strong> classées automatiquement du plus ancien au plus récent
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ BOTTOM NAV ════════════ -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPage('dashboard',this)">
+    <span class="nav-icon">📊</span>Dashboard
+  </button>
+  <button class="nav-btn" onclick="showPage('boc',this)">
+    <span class="nav-icon">📄</span>BOC
+  </button>
+  <button class="nav-btn" onclick="showPage('signaux',this)">
+    <span class="nav-icon">🎯</span>Signaux
+  </button>
+  <button class="nav-btn" onclick="showPage('saisie',this)">
+    <span class="nav-icon">✏️</span>Saisie
+  </button>
+  <button class="nav-btn" onclick="showPage('gerer',this)">
+    <span class="nav-icon">⚙️</span>Gérer
+  </button>
+</nav>
+
+<!-- ════════════ DETAIL OVERLAY ════════════ -->
+<div class="detail-overlay" id="detail-overlay">
+  <div class="detail-card">
+    <button class="detail-close" onclick="closeDetail()">✕</button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ════════════ SCRIPT ════════════ -->
+<script>
+// ── Storage ────────────────────────────────────────────────────────────────
+const DB = {
+  get: (k, def=null) => { try { const v=localStorage.getItem(k); return v!=null?JSON.parse(v):def; } catch(e){ return def; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+};
+
+// Auto stop-loss rule: stop = target / 3 (defined early, used everywhere)
+function autoStop(target) {
+  return Math.min(15, Math.max(5, Math.round(target / 3)));
+}
+
+let stocks = DB.get('brvm_stocks', []);
+let entries = DB.get('brvm_entries', {}); // { stockId: [{date, close, volume, variation}] }
+let settings = DB.get('brvm_settings', { target: 30, stop: 7 });
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+const save = () => { DB.set('brvm_stocks', stocks); DB.set('brvm_entries', entries); DB.set('brvm_settings', settings); };
+
+const fmt = n => n == null ? '—' : Number(n).toLocaleString('fr-FR');
+const fmtPct = n => n == null ? '—' : (n > 0 ? '+' : '') + Number(n).toFixed(2) + '%';
+const today = () => new Date().toISOString().split('T')[0];
+const fmtDate = d => new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+
+function toast(msg, dur=2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+// ── Signal Engine ─────────────────────────────────────────────────────────
+function computeSignals(stockId) {
+  const hist = (entries[stockId] || []).slice(-10); // last 10 entries
+  if (hist.length < 2) return { signal: 'neutral', score: 0, signals: [], buyPrice: null, sellPrice: null, stopPrice: null };
+
+  const last = hist[hist.length - 1];
+  const prev = hist.slice(0, -1);
+  const tgt = settings.target / 100;
+  const stp = (settings.stop || autoStop(settings.target)) / 100;
+
+  const signals = [];
+  let score = 0;
+
+  // ── Signal 1: Volume Spike (accumulation)
+  const avgVol = prev.reduce((a,e) => a + (e.volume||0), 0) / prev.length;
+  const volSpike = avgVol > 0 && last.volume >= 1.5 * avgVol;
+  const priceStable = Math.abs(last.variation || 0) < 1.5;
+  signals.push({
+    id: 's1', ok: volSpike,
+    name: 'Volume anormal',
+    desc: volSpike ? `Volume ×${(last.volume/avgVol).toFixed(1)} vs moyenne` : `Volume dans la normale`
+  });
+
+  // ── Signal 2: Momentum (3 closes en hausse)
+  let risingCloses = hist.length >= 3;
+  for (let i = hist.length-3; i < hist.length-1; i++) {
+    if (i < 0) { risingCloses = false; break; }
+    if (!hist[i+1] || hist[i+1].close <= hist[i].close) { risingCloses = false; break; }
+  }
+  const volRising = hist.length >= 2 && (last.volume || 0) > (prev[prev.length-1].volume || 0);
+  signals.push({
+    id: 's2', ok: risingCloses,
+    name: 'Clôtures croissantes',
+    desc: risingCloses ? '3 séances de hausse consécutives' : 'Pas de tendance haussière claire'
+  });
+
+  signals.push({
+    id: 's3', ok: volRising,
+    name: 'Volume croissant',
+    desc: volRising ? 'Volume en progression vs séance précédente' : 'Volume stable ou en baisse'
+  });
+
+  // ── Signal 4: Price Compression (cassure)
+  const recentCloses = hist.slice(-4).map(e => e.close).filter(Boolean);
+  let compressed = false;
+  if (recentCloses.length >= 3) {
+    const rangeHigh = Math.max(...recentCloses);
+    const rangeLow = Math.min(...recentCloses);
+    const mid = (rangeHigh + rangeLow) / 2;
+    compressed = mid > 0 && (rangeHigh - rangeLow) / mid < 0.04; // <4% range
+  }
+  signals.push({
+    id: 's4', ok: compressed,
+    name: 'Compression des prix',
+    desc: compressed ? 'Prix dans une fourchette étroite (<4%) — cassure imminente ?' : 'Pas de compression notable'
+  });
+
+  score = signals.filter(s => s.ok).length;
+
+  // ── Determine alert type
+  let signal = 'neutral';
+  const s1=signals[0].ok, s2=signals[1].ok, s3=signals[2].ok, s4=signals[3].ok;
+  if (volSpike && priceStable) signal = 'accum';
+  else if (risingCloses && volRising) signal = 'momentum';
+  else if (compressed && volSpike) signal = 'cassure';
+  else if (score >= 2) signal = 'watch';
+
+  // ── Price targets
+  const buyPrice = last.close || null;
+  const sellPrice = buyPrice ? Math.round(buyPrice * (1 + tgt)) : null;
+  const stopPrice = buyPrice ? Math.round(buyPrice * (1 - stp)) : null;
+
+  return { signal, score, signals, buyPrice, sellPrice, stopPrice, last, avgVol };
+}
+
+const SIGNAL_META = {
+  accum:    { label: 'Accumulation probable', icon: '🟣', cls: 'badge-accum',    highlight: 'highlight-accum' },
+  momentum: { label: 'Momentum naissant',     icon: '🟢', cls: 'badge-momentum', highlight: 'highlight-momentum' },
+  cassure:  { label: 'Cassure à surveiller',  icon: '🟡', cls: 'badge-cassure',  highlight: 'highlight-cassure' },
+  watch:    { label: 'À surveiller',          icon: '🟠', cls: 'badge-watch',    highlight: 'highlight-cassure' },
+  neutral:  { label: 'Rien à signaler',       icon: '⚪', cls: 'badge-neutral',  highlight: '' }
+};
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'saisie') renderSaisie();
+  if (name === 'signaux') renderSignaux();
+  if (name === 'gerer') renderGerer();
+  if (name === 'boc') updateApiKeyUI();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const dateEl = document.getElementById('dash-date');
+  dateEl.textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  if (!stocks.length) {
+    document.getElementById('empty-dash').style.display='block';
+    document.getElementById('all-stocks-list').innerHTML='';
+    document.getElementById('alerts-section').innerHTML='';
+    document.getElementById('total-stocks').textContent='0';
+    document.getElementById('alert-count').textContent='0';
+    document.getElementById('watch-count').textContent='0';
+    return;
+  }
+  document.getElementById('empty-dash').style.display='none';
+
+  // Compute all
+  const computed = stocks.map(s => ({ s, r: computeSignals(s.id) }));
+  computed.sort((a,b) => b.r.score - a.r.score);
+
+  const alertCount = computed.filter(x => ['accum','momentum','cassure'].includes(x.r.signal)).length;
+  const watchCount = computed.filter(x => x.r.signal === 'watch').length;
+  document.getElementById('total-stocks').textContent = stocks.length;
+  document.getElementById('alert-count').textContent = alertCount;
+  document.getElementById('watch-count').textContent = watchCount;
+
+  // Alerts section
+  const alertItems = computed.filter(x => x.r.signal !== 'neutral' && x.r.signal !== 'watch');
+  let alertHTML = '';
+  if (alertItems.length) {
+    alertHTML = `<div class="section-title">🚨 Alertes actives</div>`;
+    alertItems.forEach(({s,r}) => {
+      const meta = SIGNAL_META[r.signal];
+      const hist = (entries[s.id]||[]).slice(-1)[0];
+      alertHTML += `<div class="stock-item ${meta.highlight}" onclick="openDetail('${s.id}')">
+        <div class="card-row">
+          <div>
+            <div class="stock-name">${s.name}</div>
+            <div class="stock-meta"><span>${s.ticker||''}</span><span>${s.sector||''}</span></div>
+          </div>
+          <div style="text-align:right">
+            <div class="stock-price">${fmt(hist?.close||s.price)} F</div>
+            <div class="${(hist?.variation||0)>=0?'var-pos':'var-neg'}">${fmtPct(hist?.variation||0)}</div>
+          </div>
+        </div>
+        <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+          <span class="badge ${meta.cls}">${meta.icon} ${meta.label}</span>
+          <span style="font-size:11px;color:var(--muted)">${r.score}/4 signaux</span>
+        </div>
+      </div>`;
+    });
+  }
+  document.getElementById('alerts-section').innerHTML = alertHTML;
+
+  // All stocks list
+  let allHTML = '';
+  computed.forEach(({s,r}) => {
+    const meta = SIGNAL_META[r.signal];
+    const hist = (entries[s.id]||[]).slice(-1)[0];
+    const varClass = (hist?.variation||0)>0?'var-pos':(hist?.variation||0)<0?'var-neg':'var-zero';
+    allHTML += `<div class="stock-item" onclick="openDetail('${s.id}')">
+      <div class="card-row">
+        <div>
+          <div class="stock-name">${s.name} <span style="font-size:11px;color:var(--muted)">${s.ticker||''}</span></div>
+          <div style="margin-top:4px"><span class="badge ${meta.cls}" style="font-size:10px">${meta.icon} ${meta.label}</span></div>
+        </div>
+        <div style="text-align:right">
+          <div class="stock-price" style="font-size:16px">${fmt(hist?.close||s.price)} F</div>
+          <div class="${varClass}" style="font-size:12px">${fmtPct(hist?.variation||0)}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">Vol: ${fmt(hist?.volume||0)}</div>
+        </div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('all-stocks-list').innerHTML = allHTML;
+}
+
+// ── SAISIE ─────────────────────────────────────────────────────────────────
+function renderSaisie() {
+  document.getElementById('saisie-date').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  const sel = document.getElementById('select-stock');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- Choisir une action --</option>';
+  stocks.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id; opt.textContent = s.name + (s.ticker?' ('+s.ticker+')':'');
+    if (s.id === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  renderRecentEntries();
+}
+
+function renderRecentEntries() {
+  const all = [];
+  stocks.forEach(s => {
+    const hist = entries[s.id] || [];
+    hist.slice(-3).forEach(e => all.push({...e, stockName: s.name}));
+  });
+  all.sort((a,b) => b.date.localeCompare(a.date));
+  const recent = all.slice(0, 8);
+  if (!recent.length) {
+    document.getElementById('recent-entries').innerHTML = '<div class="empty"><div class="empty-icon">📝</div><p>Aucune saisie encore</p></div>';
+    return;
+  }
+  document.getElementById('recent-entries').innerHTML = recent.map(e => `
+    <div class="history-row" style="background:var(--panel);padding:12px;border-radius:10px;margin-bottom:6px;border:1px solid var(--border)">
+      <div>
+        <div style="font-weight:600;font-size:13px">${e.stockName}</div>
+        <div style="font-size:11px;color:var(--muted)">${fmtDate(e.date)}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:700">${fmt(e.close)} F</div>
+        <div class="${(e.variation||0)>=0?'var-pos':'var-neg'}" style="font-size:11px">${fmtPct(e.variation||0)} · Vol ${fmt(e.volume)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function saveEntry() {
+  const stockId = document.getElementById('select-stock').value;
+  const close = parseFloat(document.getElementById('input-close').value);
+  const volume = parseFloat(document.getElementById('input-volume').value);
+  const variation = parseFloat(document.getElementById('input-var').value);
+  if (!stockId) { toast('⚠️ Sélectionne une action'); return; }
+  if (!close || !volume) { toast('⚠️ Entre au moins la clôture et le volume'); return; }
+
+  if (!entries[stockId]) entries[stockId] = [];
+  const dateStr = today();
+  // Update or add
+  const idx = entries[stockId].findIndex(e => e.date === dateStr);
+  const entry = { date: dateStr, close, volume, variation: isNaN(variation) ? 0 : variation };
+  if (idx >= 0) entries[stockId][idx] = entry; else entries[stockId].push(entry);
+  entries[stockId].sort((a,b) => a.date.localeCompare(b.date));
+  save();
+  toast('✅ Données enregistrées !');
+  document.getElementById('input-close').value='';
+  document.getElementById('input-volume').value='';
+  document.getElementById('input-var').value='';
+  renderRecentEntries();
+}
+
+// ── SETTINGS: AUTO-LINKED STOP-LOSS ───────────────────────────────────────
+function autoStop(target) {
+  // Rule: stop = target / 3, capped between 5% and 15%
+  return Math.min(15, Math.max(5, Math.round(target / 3)));
+}
+
+function onTargetChange() {
+  settings.target = parseInt(document.getElementById('setting-target').value);
+  settings.stop = autoStop(settings.target);
+  save();
+  updateStopDisplay();
+  renderSignaux();
+}
+
+function onWindowChange() {
+  settings.window = parseInt(document.getElementById('setting-window').value);
+  save();
+  renderSignaux();
+}
+
+function updateStopDisplay() {
+  const stopEl = document.getElementById('stop-display');
+  const infoEl = document.getElementById('stop-auto-info');
+  const subEl  = document.getElementById('target-sub');
+  if (stopEl) stopEl.textContent = `-${settings.stop}%`;
+  if (infoEl) infoEl.textContent = `Règle 1/3 : objectif ÷ 3 = stop (${settings.target}% ÷ 3 ≈ ${settings.stop}%)`;
+  if (subEl)  subEl.textContent  = `Stop-loss lié → -${settings.stop}% automatiquement`;
+}
+
+// ── RANKING ENGINE ─────────────────────────────────────────────────────────
+function computeAlert(stockId) {
+  const hist = entries[stockId] || [];
+  if (!hist.length) return null;
+
+  const sorted = [...hist].sort((a,b) => a.date.localeCompare(b.date));
+  const last   = sorted[sorted.length - 1];
+  const tgt    = settings.target / 100;
+  const stp    = settings.stop   / 100;
+  const win    = settings.window || 20;
+
+  // Signal trigger: find first date where score >= 2
+  const r = computeSignals(stockId);
+
+  // Entry: first session where signal was active (approx: use oldest session with score context)
+  // For simplicity: entry = first session in history, or when we have >=4 sessions
+  const entryEntry = sorted.length >= 4 ? sorted[sorted.length - 4] : sorted[0];
+  const entryPrice = entryEntry.close;
+  const entryDate  = entryEntry.date;
+
+  const currentPrice = last.close;
+  const sellTarget   = Math.round(entryPrice * (1 + tgt));
+  const stopPrice    = Math.round(entryPrice * (1 - stp));
+
+  // Sessions elapsed since entry
+  const sessionsElapsed = sorted.indexOf(entryEntry) >= 0
+    ? sorted.length - sorted.indexOf(entryEntry) - 1
+    : 0;
+  const sessionsLeft = Math.max(0, win - sessionsElapsed);
+
+  // % gain from entry
+  const gainPct = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
+  // % remaining to target
+  const toTargetPct = entryPrice > 0 ? ((sellTarget - currentPrice) / currentPrice) * 100 : 0;
+  // Expected annualised-like rendement score: target% / sessions_elapsed (speed)
+  const rendScore = sessionsElapsed > 0 ? (tgt * 100) / sessionsElapsed : 0;
+
+  // Alert status
+  let alertStatus = 'hold';
+  let alertColor  = 'var(--accent)';
+  let alertMsg    = '';
+
+  if (currentPrice <= stopPrice) {
+    alertStatus = 'stop'; alertColor = 'var(--red)';
+    alertMsg = '🔴 STOP-LOSS ATTEINT — Vendre immédiatement';
+  } else if (currentPrice >= sellTarget) {
+    alertStatus = 'target'; alertColor = 'var(--green)';
+    alertMsg = '🎯 OBJECTIF ATTEINT — Prendre les profits !';
+  } else if (sessionsLeft === 0) {
+    alertStatus = 'timeout'; alertColor = 'var(--orange)';
+    alertMsg = '⏰ FENÊTRE EXPIRÉE — Envisager de sortir';
+  } else if (sessionsLeft <= 3) {
+    alertStatus = 'urgent'; alertColor = 'var(--gold)';
+    alertMsg = `⚠️ Plus que ${sessionsLeft} séance${sessionsLeft>1?'s':''} — Décision à prendre`;
+  } else {
+    alertMsg = `⏳ ${sessionsLeft} séances restantes dans la fenêtre`;
+  }
+
+  return {
+    stockId, entryPrice, entryDate, currentPrice,
+    sellTarget, stopPrice, gainPct, toTargetPct,
+    sessionsElapsed, sessionsLeft, rendScore,
+    alertStatus, alertColor, alertMsg,
+    signal: r.signal, score: r.score, signals: r.signals
+  };
+}
+
+// ── RANKING SORT FUNCTIONS ─────────────────────────────────────────────────
+const RANK_CONFIGS = {
+  composite: {
+    legend: '🏆 Classement croisé — combinaison des 3 scores (prix + durée + rendement). Le meilleur rapport global.',
+    sort: (a,b) => {
+      // Normalize each rank 0-1 and combine
+      return (b.rankPrix + b.rankDuree + b.rankRendement) - (a.rankPrix + a.rankDuree + a.rankRendement);
+    }
+  },
+  rendement: {
+    legend: '💰 Classement par taux de rendement escompté — actions avec le plus fort potentiel de gain restant.',
+    sort: (a,b) => b.toTargetPct - a.toTargetPct
+  },
+  duree: {
+    legend: '⏳ Classement par durée estimée du momentum — actions avec le plus de temps avant expiration de la fenêtre.',
+    sort: (a,b) => b.sessionsLeft - a.sessionsLeft
+  },
+  prix: {
+    legend: '📈 Classement par performance depuis le prix d\'entrée — actions avec le meilleur gain en cours.',
+    sort: (a,b) => b.gainPct - a.gainPct
+  },
+  all: {
+    legend: 'Toutes les actions par score de signal (1 à 4).',
+    sort: (a,b) => b.score - a.score
+  }
+};
+
+let currentFilter = 'composite';
+
+function filterSignal(type, btn) {
+  currentFilter = type;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderSignaux();
+}
+
+function renderSignaux() {
+  const legendEl = document.getElementById('ranking-legend');
+  const listEl   = document.getElementById('signals-list');
+
+  if (!stocks.length) {
+    listEl.innerHTML = '<div class="empty"><div class="empty-icon">🎯</div><h3>Aucune action</h3><p>Ajoute des actions dans Gérer</p></div>';
+    return;
+  }
+
+  // Compute alerts for all stocks with enough data
+  let items = stocks
+    .map(s => ({ s, a: computeAlert(s.id), r: computeSignals(s.id) }))
+    .filter(x => x.a !== null)
+    .map(x => ({ ...x.a, ...x.r, stockName: x.s.name, ticker: x.s.ticker, sector: x.s.sector }));
+
+  if (!items.length) {
+    listEl.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><h3>Pas encore assez de données</h3><p>Upload au moins 4 BOC pour activer les alertes</p></div>';
+    return;
+  }
+
+  // Compute normalized ranks for composite
+  const n = items.length;
+  const sorted_prix     = [...items].sort((a,b) => b.gainPct - a.gainPct);
+  const sorted_duree    = [...items].sort((a,b) => b.sessionsLeft - a.sessionsLeft);
+  const sorted_rendement= [...items].sort((a,b) => b.toTargetPct - a.toTargetPct);
+
+  items.forEach(item => {
+    item.rankPrix      = (n - sorted_prix.findIndex(x=>x.stockId===item.stockId)) / n;
+    item.rankDuree     = (n - sorted_duree.findIndex(x=>x.stockId===item.stockId)) / n;
+    item.rankRendement = (n - sorted_rendement.findIndex(x=>x.stockId===item.stockId)) / n;
+    item.compositeScore = (item.rankPrix + item.rankDuree + item.rankRendement) / 3;
+  });
+
+  // Apply sort
+  const cfg = RANK_CONFIGS[currentFilter] || RANK_CONFIGS.all;
+  if (legendEl) legendEl.textContent = cfg.legend;
+  items.sort(cfg.sort);
+
+  // Render
+  listEl.innerHTML = items.map((item, idx) => {
+    const meta = SIGNAL_META[item.signal] || SIGNAL_META.neutral;
+    const gainColor  = item.gainPct > 0 ? 'var(--green)' : item.gainPct < 0 ? 'var(--red)' : 'var(--muted)';
+    const urgentBorder = item.alertStatus === 'stop' ? 'var(--red)'
+      : item.alertStatus === 'target' ? 'var(--green)'
+      : item.alertStatus === 'timeout' || item.alertStatus === 'urgent' ? 'var(--gold)'
+      : 'var(--border)';
+
+    // Progress bar: how far from entry to target
+    const progress = item.sellTarget > item.entryPrice
+      ? Math.min(100, Math.max(0, ((item.currentPrice - item.entryPrice) / (item.sellTarget - item.entryPrice)) * 100))
+      : 0;
+    const progressColor = progress >= 100 ? 'var(--green)' : progress >= 60 ? 'var(--gold)' : 'var(--accent)';
+
+    // Rank badge for composite view
+    const rankBadge = currentFilter === 'composite'
+      ? `<span style="background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:var(--accent)">#${idx+1}</span>`
+      : '';
+
+    return `
+    <div class="stock-item" style="border-left:3px solid ${urgentBorder};margin-bottom:10px" onclick="openDetail('${item.stockId}')">
+
+      <!-- Header row -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${rankBadge}
+            <span style="font-weight:700;font-size:14px">${item.stockName}</span>
+            <span style="font-size:10px;color:var(--muted)">${item.ticker||''}</span>
+          </div>
+          <div style="margin-top:4px"><span class="badge ${meta.cls}">${meta.icon} ${meta.label}</span></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:700;font-size:15px">${fmt(item.currentPrice)} F</div>
+          <div style="font-size:12px;color:${gainColor};font-weight:600">${item.gainPct>=0?'+':''}${item.gainPct.toFixed(1)}% depuis entrée</div>
+        </div>
+      </div>
+
+      <!-- Alert banner -->
+      <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:7px 10px;margin-bottom:8px;font-size:12px;font-weight:600;color:${item.alertColor}">${item.alertMsg}</div>
+
+      <!-- Progress: entry → target -->
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px">
+          <span>Entrée ${fmt(item.entryPrice)} F</span>
+          <span style="color:${progressColor}">${progress.toFixed(0)}% vers objectif</span>
+          <span>Cible ${fmt(item.sellTarget)} F</span>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;position:relative">
+          <div style="height:100%;width:${progress}%;background:${progressColor};border-radius:3px;transition:width .4s"></div>
+          <!-- Stop marker -->
+          <div style="position:absolute;top:0;bottom:0;left:${Math.round(settings.stop/(settings.stop+settings.target)*100)}%;width:2px;background:var(--red);opacity:.6"></div>
+        </div>
+        <div style="font-size:10px;color:var(--red);margin-top:2px">🔴 Stop: ${fmt(item.stopPrice)} F</div>
+      </div>
+
+      <!-- 3 rank scores -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:10px">
+        <div style="background:var(--panel2);border-radius:6px;padding:6px;text-align:center">
+          <div style="color:var(--muted)">📈 Prix</div>
+          <div style="font-weight:700;color:var(--accent)">${item.gainPct>=0?'+':''}${item.gainPct.toFixed(1)}%</div>
+        </div>
+        <div style="background:var(--panel2);border-radius:6px;padding:6px;text-align:center">
+          <div style="color:var(--muted)">⏳ Durée</div>
+          <div style="font-weight:700;color:${item.sessionsLeft<=3?'var(--red)':item.sessionsLeft<=7?'var(--gold)':'var(--green)'}">${item.sessionsLeft} séances</div>
+        </div>
+        <div style="background:var(--panel2);border-radius:6px;padding:6px;text-align:center">
+          <div style="color:var(--muted)">💰 Restant</div>
+          <div style="font-weight:700;color:var(--green)">+${item.toTargetPct.toFixed(1)}%</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── DETAIL OVERLAY ─────────────────────────────────────────────────────────
+function openDetail(stockId) {
+  const s = stocks.find(x => x.id === stockId);
+  if (!s) return;
+  const r = computeSignals(stockId);
+  const meta = SIGNAL_META[r.signal];
+  const hist = entries[stockId] || [];
+  const last5 = hist.slice(-5);
+
+  let html = `
+    <div style="margin-bottom:16px">
+      <button class="detail-close" onclick="closeDetail()">✕</button>
+      <div class="detail-title">${s.name}</div>
+      <div style="font-size:12px;color:var(--muted)">${s.ticker||''} · ${s.sector||''}</div>
+      <div style="margin-top:8px"><span class="badge ${meta.cls}">${meta.icon} ${meta.label}</span></div>
+    </div>
+
+    ${r.buyPrice ? `
+    <div class="target-box" style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">💰 Niveaux de prix</div>
+      <div class="target-row">
+        <span class="target-label">📍 Prix actuel</span>
+        <span class="target-val" style="color:var(--text)">${fmt(r.buyPrice)} FCFA</span>
+      </div>
+      <div class="target-row" style="border-top:1px solid var(--border)">
+        <span class="target-label">🟢 Prix d'achat conseillé</span>
+        <span class="target-val" style="color:var(--green)">${fmt(r.buyPrice)} FCFA</span>
+      </div>
+      <div class="target-row">
+        <span class="target-label">🎯 Objectif de vente (+${settings.target}%)</span>
+        <span class="target-val" style="color:var(--accent)">${fmt(r.sellPrice)} FCFA</span>
+      </div>
+      <div class="target-row">
+        <span class="target-label">🔴 Stop-loss (-${settings.stop}%)</span>
+        <span class="target-val" style="color:var(--red)">${fmt(r.stopPrice)} FCFA</span>
+      </div>
+      <div class="target-row" style="border-top:1px solid var(--border)">
+        <span class="target-label">💵 Gain potentiel</span>
+        <span class="target-val" style="color:var(--gold)">+${fmt(r.sellPrice - r.buyPrice)} FCFA</span>
+      </div>
+    </div>` : ''}
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📡 Détail des signaux</div>
+    ${r.signals.map(sg => `
+      <div class="sig-row">
+        <div class="sig-icon ${sg.ok?'sig-ok':'sig-ko'}">${sg.ok?'✓':'–'}</div>
+        <div class="sig-text"><strong>${sg.name}</strong>${sg.desc}</div>
+      </div>
+    `).join('')}
+
+    ${last5.length ? `
+    <div style="margin-top:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📅 Historique récent</div>
+      ${[...last5].reverse().map(e => `
+        <div class="history-row">
+          <span style="color:var(--muted)">${fmtDate(e.date)}</span>
+          <span style="font-weight:600">${fmt(e.close)} F</span>
+          <span class="${(e.variation||0)>=0?'var-pos':'var-neg'}">${fmtPct(e.variation||0)}</span>
+          <span style="color:var(--muted)">Vol: ${fmt(e.volume)}</span>
+        </div>
+      `).join('')}
+    </div>` : '<div style="color:var(--muted);font-size:13px;margin-top:16px;text-align:center">Pas encore de données saisies</div>'}
+
+    <button class="btn btn-secondary" style="margin-top:16px" onclick="closeDetail()">Fermer</button>
+  `;
+  document.getElementById('detail-content').innerHTML = html;
+  document.getElementById('detail-overlay').classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('open');
+}
+
+// ── IMPORT ALL BRVM STOCKS ─────────────────────────────────────────────────
+const BRVM_ALL_STOCKS = [
+  // ── FINANCE / BANQUE ──
+  { name:'BANK OF AFRICA BN',    ticker:'BOAN',  sector:'Finance',      price:0 },
+  { name:'BANK OF AFRICA BF',    ticker:'BOABF', sector:'Finance',      price:0 },
+  { name:'BANK OF AFRICA CI',    ticker:'BOACI', sector:'Finance',      price:0 },
+  { name:'BANK OF AFRICA ML',    ticker:'BOAML', sector:'Finance',      price:0 },
+  { name:'BANK OF AFRICA SN',    ticker:'BOASN', sector:'Finance',      price:0 },
+  { name:'BANK OF AFRICA TG',    ticker:'BOATG', sector:'Finance',      price:0 },
+  { name:'BICICI CI',            ticker:'BICCI', sector:'Finance',      price:0 },
+  { name:'CORIS BANK BF',        ticker:'CBIBF', sector:'Finance',      price:0 },
+  { name:'ECOBANK CI',           ticker:'ECOC',  sector:'Finance',      price:0 },
+  { name:'ECOBANK TG',           ticker:'ECOT',  sector:'Finance',      price:0 },
+  { name:'NSIA BANQUE CI',       ticker:'NSIAC', sector:'Finance',      price:0 },
+  { name:'ORABANK TG',           ticker:'ORAT',  sector:'Finance',      price:0 },
+  { name:'SGB CI',               ticker:'SGBCI', sector:'Finance',      price:0 },
+  { name:'SGBF BF',              ticker:'SGBBF', sector:'Finance',      price:0 },
+  { name:'VS FINANCE CI',        ticker:'VSFC',  sector:'Finance',      price:0 },
+  { name:'ATLANTIC BUSINESS INT',ticker:'ABIC',  sector:'Finance',      price:0 },
+  // ── TÉLÉCOM ──
+  { name:'SONATEL SN',           ticker:'SNTS',  sector:'Télécom',      price:0 },
+  { name:'ORANGE CI',            ticker:'ORAC',  sector:'Télécom',      price:0 },
+  { name:'ONATEL BF',            ticker:'ONTBF', sector:'Télécom',      price:0 },
+  // ── ÉNERGIE / EAU ──
+  { name:'CIE CI',               ticker:'CIEC',  sector:'Energie',      price:0 },
+  { name:'SODECI CI',            ticker:'SDCI',  sector:'Energie',      price:0 },
+  { name:'CITELEC TG',           ticker:'CTTG',  sector:'Energie',      price:0 },
+  { name:'TOTAL CI',             ticker:'TTLCI', sector:'Distribution', price:0 },
+  { name:'VIVO ENERGY CI',       ticker:'VVECI', sector:'Distribution', price:0 },
+  // ── AGRO-INDUSTRIE ──
+  { name:'PALMCI CI',            ticker:'PLMCI', sector:'Agro',         price:0 },
+  { name:'SAPH CI',              ticker:'SAPCI', sector:'Agro',         price:0 },
+  { name:'SUCRIVOIRE CI',        ticker:'SCVCI', sector:'Agro',         price:0 },
+  { name:'SICOR CI',             ticker:'SCCI',  sector:'Agro',         price:0 },
+  { name:'FILTISAC CI',          ticker:'FTSC',  sector:'Agro',         price:0 },
+  { name:'SIFCA CI',             ticker:'SIFC',  sector:'Agro',         price:0 },
+  { name:'TRITURAF CI',          ticker:'TTCI',  sector:'Agro',         price:0 },
+  // ── INDUSTRIE ──
+  { name:'SICABLE CI',           ticker:'SCBLE', sector:'Industrie',    price:0 },
+  { name:'SOLIBRA CI',           ticker:'SLBCI', sector:'Industrie',    price:0 },
+  { name:'SITAB CI',             ticker:'STBCI', sector:'Industrie',    price:0 },
+  { name:'NESTLE CI',            ticker:'NSTCI', sector:'Industrie',    price:0 },
+  { name:'BERNABE CI',           ticker:'BRNCI', sector:'Industrie',    price:0 },
+  { name:'CFAO MOTORS CI',       ticker:'CFACI', sector:'Distribution', price:0 },
+  // ── IMMOBILIER / AUTRE ──
+  { name:'SETAO CI',             ticker:'STOCI', sector:'Industrie',    price:0 },
+  { name:'CROWN SIEM CI',        ticker:'CSICI', sector:'Industrie',    price:0 },
+  { name:'NEI-CEDA CI',          ticker:'NEICD', sector:'Distribution', price:0 },
+  { name:'SMB CI',               ticker:'SMBCI', sector:'Autre',        price:0 },
+  { name:'SERVAIR ABIDJAN CI',   ticker:'SVRAB', sector:'Autre',        price:0 },
+  { name:'MOVIS CI',             ticker:'MVCI',  sector:'Distribution', price:0 },
+  { name:'UNIWAX CI',            ticker:'UNWXC', sector:'Industrie',    price:0 },
+  { name:'AIR LIQUIDE CI',       ticker:'ALQCI', sector:'Industrie',    price:0 },
+];
+
+function importAllBRVM() {
+  const existing = stocks.map(s => s.ticker);
+  const toAdd = BRVM_ALL_STOCKS.filter(s => !existing.includes(s.ticker));
+
+  if (!toAdd.length) {
+    toast('✅ Toutes les actions BRVM sont déjà dans ta liste !');
+    return;
+  }
+
+  const alreadyCount = BRVM_ALL_STOCKS.length - toAdd.length;
+  const msg = alreadyCount > 0
+    ? `Ajouter les ${toAdd.length} actions BRVM manquantes ? (${alreadyCount} déjà présentes)`
+    : `Importer les ${toAdd.length} actions cotées à la BRVM ?`;
+
+  if (!confirm(msg + '\n\nTu pourras supprimer celles que tu ne veux pas suivre.')) return;
+
+  toAdd.forEach(s => {
+    stocks.push({ id: 'brvm_' + s.ticker + '_' + Date.now() + Math.random(), ...s });
+  });
+  save();
+  renderGerer();
+  renderSaisie();
+  renderDashboard();
+  toast(`✅ ${toAdd.length} actions BRVM importées !`, 3000);
+
+  // Update status
+  const statusEl = document.getElementById('import-brvm-status');
+  if (statusEl) statusEl.textContent = `✅ ${stocks.length} actions dans ta liste`;
+}
+
+// ── GÉRER ─────────────────────────────────────────────────────────────────
+function renderGerer() {
+  const targetEl = document.getElementById('setting-target');
+  const windowEl = document.getElementById('setting-window');
+  if (targetEl) targetEl.value = settings.target;
+  if (windowEl) windowEl.value = settings.window || 20;
+  updateStopDisplay();
+  updateBackupUI();
+
+  // Update import button status
+  const statusEl = document.getElementById('import-brvm-status');
+  if (statusEl) {
+    const alreadyImported = stocks.filter(s => s.ticker).length;
+    if (alreadyImported >= BRVM_ALL_STOCKS.length) {
+      statusEl.textContent = `✅ Toutes les ${BRVM_ALL_STOCKS.length} actions déjà importées`;
+    } else if (alreadyImported > 0) {
+      statusEl.textContent = `${alreadyImported}/${BRVM_ALL_STOCKS.length} actions déjà présentes — clique pour compléter`;
+    } else {
+      statusEl.textContent = `${BRVM_ALL_STOCKS.length} actions · 8 secteurs · CI, SN, BF, TG, ML, BN`;
+    }
+  }
+
+  // Stock count badge
+  const countEl = document.getElementById('stocks-count');
+  if (countEl) countEl.textContent = stocks.length ? `(${stocks.length})` : '';
+  document.getElementById('setting-target').onchange = onTargetChange;
+  if (document.getElementById('setting-window')) document.getElementById('setting-window').onchange = onWindowChange;
+
+  if (!stocks.length) {
+    document.getElementById('manage-list').innerHTML = '<div class="empty"><p>Aucune action ajoutée</p></div>';
+    return;
+  }
+  document.getElementById('manage-list').innerHTML = stocks.map(s => `
+    <div class="card" style="margin-bottom:8px;padding:12px">
+      <div class="card-row">
+        <div>
+          <div style="font-weight:600">${s.name}</div>
+          <div style="font-size:11px;color:var(--muted)">${s.ticker||''} · ${s.sector||''} · ${(entries[s.id]||[]).length} saisies</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="removeStock('${s.id}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addStock() {
+  const name = document.getElementById('new-stock-name').value.trim();
+  const ticker = document.getElementById('new-stock-ticker').value.trim();
+  const price = parseFloat(document.getElementById('new-stock-price').value) || 0;
+  const sector = document.getElementById('new-stock-sector').value;
+  if (!name) { toast('⚠️ Entre le nom de l\'action'); return; }
+  const id = 'stock_' + Date.now();
+  stocks.push({ id, name, ticker, price, sector });
+  save();
+  toast('✅ ' + name + ' ajoutée !');
+  document.getElementById('new-stock-name').value='';
+  document.getElementById('new-stock-ticker').value='';
+  document.getElementById('new-stock-price').value='';
+  renderGerer();
+  renderSaisie();
+}
+
+function removeStock(id) {
+  if (!confirm('Supprimer cette action et tout son historique ?')) return;
+  stocks = stocks.filter(s => s.id !== id);
+  delete entries[id];
+  save();
+  renderGerer();
+  renderSaisie();
+  toast('Action supprimée');
+}
+
+function clearAllData() {
+  if (!confirm('⚠️ Effacer TOUTES les données ? Cette action est irréversible.')) return;
+  stocks=[]; entries={};
+  save(); renderGerer(); renderDashboard(); renderSaisie();
+  toast('Données effacées');
+}
+
+// ── API KEY MANAGEMENT ────────────────────────────────────────────────────
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) { toast('⚠️ Entre ta clé API'); return; }
+  if (!key.startsWith('sk-ant-')) {
+    toast('⚠️ Format invalide — la clé doit commencer par sk-ant-'); return;
+  }
+  DB.set('brvm_api_key', key);
+  updateApiKeyUI();
+  toast('✅ Clé API sauvegardée !');
+}
+
+function updateApiKeyUI() {
+  const key = DB.get('brvm_api_key', '');
+  const statusEl = document.getElementById('api-key-status');
+  const inputEl  = document.getElementById('api-key-input');
+  if (!statusEl) return;
+  if (key) {
+    statusEl.innerHTML = `<span style="color:var(--green)">✅ Clé configurée : ${key.slice(0,12)}…${key.slice(-4)}</span> <button onclick="DB.set('brvm_api_key','');updateApiKeyUI()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;margin-left:6px">Supprimer</button>`;
+    if (inputEl) inputEl.value = '';
+  } else {
+    statusEl.innerHTML = `<span style="color:var(--orange)">⚠️ Aucune clé configurée</span>`;
+  }
+}
+
+// ── ROBUST JSON PARSER ────────────────────────────────────────────────────
+function robustJsonParse(raw) {
+  // Step 1: strip markdown fences
+  let clean = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+  // Step 2: extract first [ ... ] block
+  const start = clean.indexOf('[');
+  const end   = clean.lastIndexOf(']');
+  if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1);
+
+  // Step 3: try direct parse
+  try { return JSON.parse(clean); } catch(e) {}
+
+  // Step 4: fix common issues
+  clean = clean
+    .replace(/,\s*([\]}])/g, '$1')        // trailing commas
+    .replace(/(['"])?([a-zA-Z_][a-zA-Z0-9_]*)(['"])?\s*:/g, '"$2":') // unquoted keys
+    .replace(/:\s*'([^']*)'/g, ':"$1"')   // single-quoted values
+    .replace(/[\u0000-\u001F]+/g, ' ');   // control chars
+
+  try { return JSON.parse(clean); } catch(e) {}
+
+  // Step 5: extract objects one by one
+  const results = [];
+  const objRegex = /\{[^{}]*\}/g;
+  let match;
+  while ((match = objRegex.exec(clean)) !== null) {
+    try { results.push(JSON.parse(match[0])); } catch(e) {}
+  }
+  if (results.length) return results;
+
+  throw new Error('Impossible de lire la réponse JSON — réessaie');
+}
+
+// ── BOC SCANNER ───────────────────────────────────────────────────────────
+let bocExtracted = []; // Extracted data from PDF before applying
+
+function bocDragOver(e) { e.preventDefault(); document.getElementById('boc-dropzone').classList.add('drag'); }
+function bocDragLeave() { document.getElementById('boc-dropzone').classList.remove('drag'); }
+function bocDrop(e) {
+  e.preventDefault();
+  document.getElementById('boc-dropzone').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') bocProcess(f);
+  else toast('⚠️ Merci d\'uploader un PDF');
+}
+function bocFileSelected(e) {
+  const f = e.target.files[0];
+  if (f) bocProcess(f);
+  e.target.value = '';
+}
+
+function bocSetStatus(text, showSpinner=true, progress=null) {
+  const bar = document.getElementById('boc-status-bar');
+  const txt = document.getElementById('boc-status-text');
+  const spn = document.getElementById('boc-spinner');
+  const prg = document.getElementById('boc-progress-wrap');
+  const fill = document.getElementById('boc-progress-fill');
+  bar.style.display = 'block';
+  txt.textContent = text;
+  spn.style.display = showSpinner ? 'block' : 'none';
+  if (progress !== null) {
+    prg.style.display = 'block';
+    fill.style.width = progress + '%';
+  }
+}
+
+async function bocProcess(file) {
+  bocReset(false);
+  document.getElementById('boc-drop-title').textContent = file.name;
+  document.getElementById('boc-drop-sub').textContent = `${(file.size/1024).toFixed(0)} Ko — analyse en cours…`;
+  bocSetStatus('Lecture du PDF…', true, 10);
+
+  try {
+    // Convert to base64
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = () => rej(new Error('Lecture échouée'));
+      r.readAsDataURL(file);
+    });
+
+    bocSetStatus('Envoi à l\'IA…', true, 30);
+
+    const prompt = `Tu es un expert en extraction de données boursières. Ce document est un BOC (Bulletin Officiel de la Cote) de la BRVM.
+
+Extrais TOUTES les lignes d'actions cotées. Pour chaque action retourne un objet JSON avec :
+- "name": nom complet exactement comme dans le document
+- "ticker": code ticker (sinon null)
+- "date": date de la séance (format YYYY-MM-DD, sinon null)
+- "close": cours de clôture ou dernier cours (nombre)
+- "high": plus haut (nombre, sinon null)
+- "low": plus bas (nombre, sinon null)
+- "volume": nombre de titres échangés (entier, sinon 0)
+- "variation": variation en % (nombre, sinon 0)
+
+⚠️ ORDRE CHRONOLOGIQUE : si plusieurs semaines sont présentes, retourne un objet par semaine par action, du plus ancien au plus récent.
+Ignore : obligations, bons du Trésor, totaux, en-têtes, lignes sans cours.
+
+Réponds UNIQUEMENT avec un tableau JSON valide, sans markdown, sans texte avant ou après.
+Exemple: [{"name":"SONATEL SN","ticker":"SNTS","date":"2026-03-03","close":17500,"high":17600,"low":17400,"volume":2400,"variation":1.2}]`;
+
+    bocSetStatus('Extraction par IA en cours (30–60 sec)…', true, 50);
+
+    // Get API key - try stored key first, fall back to no key (works inside Claude.ai)
+    const apiKey = DB.get('brvm_api_key', '');
+    const headers = {
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    };
+    if (apiKey) headers['x-api-key'] = apiKey;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    bocSetStatus('Traitement des résultats…', true, 85);
+
+    const data = await response.json();
+    if (data.error) {
+      if (data.error.message && data.error.message.includes('x-api-key')) {
+        throw new Error('Clé API manquante — entre ta clé dans le champ 🔑 ci-dessus');
+      }
+      throw new Error(data.error.message);
+    }
+
+    const raw = data.content.map(b => b.text||'').join('').trim();
+    bocExtracted = robustJsonParse(raw);
+
+    bocSetStatus(`✅ ${bocExtracted.length} lignes extraites du BOC`, false, 100);
+    bocShowResults();
+
+  } catch(err) {
+    bocSetStatus('❌ Erreur : ' + err.message, false);
+    toast('❌ Extraction échouée — ' + err.message, 4000);
+  }
+}
+
+function bocShowResults() {
+  const resultsEl = document.getElementById('boc-results');
+  const listEl = document.getElementById('boc-results-list');
+  const summaryEl = document.getElementById('boc-results-summary');
+
+  resultsEl.style.display = 'block';
+
+  // Summary chips
+  const withVol = bocExtracted.filter(r => r.volume > 0).length;
+  const withClose = bocExtracted.filter(r => r.close > 0).length;
+  summaryEl.innerHTML = `
+    <div class="chip c-accent"><div class="chip-val">${bocExtracted.length}</div><div class="chip-lbl">Actions lues</div></div>
+    <div class="chip c-green"><div class="chip-val">${withClose}</div><div class="chip-lbl">Avec cours</div></div>
+    <div class="chip c-orange"><div class="chip-val">${withVol}</div><div class="chip-lbl">Avec volume</div></div>
+  `;
+
+  // Match with existing stocks for preview
+  let html = '';
+  bocExtracted.slice(0, 30).forEach(row => {
+    const match = stocks.find(s =>
+      s.name.toLowerCase().includes(row.name.toLowerCase().slice(0,6)) ||
+      (row.ticker && s.ticker && s.ticker === row.ticker)
+    );
+    const varClass = (row.variation||0) > 0 ? 'var-pos' : (row.variation||0) < 0 ? 'var-neg' : 'var-zero';
+    const matchBadge = match
+      ? `<span style="font-size:10px;color:var(--green);background:rgba(16,185,129,.1);padding:2px 6px;border-radius:10px">✓ Correspond à ${match.name}</span>`
+      : `<span style="font-size:10px;color:var(--muted);background:rgba(100,116,139,.1);padding:2px 6px;border-radius:10px">⊕ Nouvelle action</span>`;
+    html += `
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:7px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-weight:600;font-size:13px">${row.name} ${row.ticker ? `<span style="color:var(--muted);font-size:11px">${row.ticker}</span>` : ''}</div>
+            <div style="margin-top:4px">${matchBadge}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700;font-size:14px">${fmt(row.close)} F</div>
+            <div class="${varClass}" style="font-size:11px">${fmtPct(row.variation||0)}</div>
+            <div style="font-size:10px;color:var(--muted)">Vol: ${fmt(row.volume||0)}</div>
+          </div>
+        </div>
+      </div>`;
+  });
+  if (bocExtracted.length > 30) html += `<div style="text-align:center;color:var(--muted);font-size:12px;padding:8px">… et ${bocExtracted.length - 30} autres actions</div>`;
+  listEl.innerHTML = html;
+}
+
+function bocApplyData() {
+  if (!bocExtracted.length) return;
+  let added = 0, updated = 0, newStocks = 0;
+
+  bocExtracted.forEach(row => {
+    if (!row.close || row.close <= 0) return;
+
+    // Find matching stock
+    let stock = stocks.find(s =>
+      s.name.toLowerCase().includes(row.name.toLowerCase().slice(0,6)) ||
+      (row.ticker && s.ticker && s.ticker === row.ticker)
+    );
+
+    // Auto-create stock if not found
+    if (!stock) {
+      stock = {
+        id: 'boc_' + (row.ticker||row.name.replace(/\s/g,'')) + '_' + Date.now(),
+        name: row.name,
+        ticker: row.ticker || '',
+        price: row.close,
+        sector: 'Autre'
+      };
+      stocks.push(stock);
+      newStocks++;
+    }
+
+    // Add entry
+    const dateStr = row.date || today();
+    if (!entries[stock.id]) entries[stock.id] = [];
+    const idx = entries[stock.id].findIndex(e => e.date === dateStr);
+    const entry = { date: dateStr, close: row.close, volume: row.volume||0, variation: row.variation||0, high: row.high, low: row.low };
+    if (idx >= 0) { entries[stock.id][idx] = entry; updated++; }
+    else { entries[stock.id].push(entry); added++; }
+    entries[stock.id].sort((a,b) => a.date.localeCompare(b.date));
+  });
+
+  save();
+  renderDashboard(); renderSaisie(); renderSignaux();
+  bocReset(true);
+  toast(`✅ ${added} entrées ajoutées, ${updated} mises à jour${newStocks ? ', ' + newStocks + ' nouvelles actions' : ''}`, 4000);
+  showPage('dashboard', document.querySelectorAll('.nav-btn')[0]);
+}
+
+function bocReset(full=true) {
+  bocExtracted = [];
+  document.getElementById('boc-status-bar').style.display = 'none';
+  document.getElementById('boc-results').style.display = 'none';
+  if (full) {
+    document.getElementById('boc-drop-title').textContent = 'Dépose ton BOC ici';
+    document.getElementById('boc-drop-sub').textContent = 'ou clique pour choisir le fichier PDF';
+  }
+}
+
+// ── BACKUP SYSTEM ──────────────────────────────────────────────────────────
+
+function exportData(silent=false) {
+  const data = { version:2, exportedAt:new Date().toISOString(), stocks, entries, settings };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`BRVM_sauvegarde_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  const now = new Date().toISOString();
+  DB.set('brvm_last_backup', now);
+  updateBackupUI();
+  if (!silent) toast('✅ Sauvegarde téléchargée !');
+}
+
+function importData(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.stocks || !data.entries) throw new Error('invalide');
+      const d = data.exportedAt ? fmtDate(data.exportedAt.split('T')[0]) : '?';
+      if (!confirm(`⚠️ Restaurer la sauvegarde du ${d} ?\nCela remplacera toutes tes données actuelles.`)) return;
+      stocks=data.stocks||[]; entries=data.entries||{};
+      if (data.settings) settings={...settings,...data.settings};
+      save(); renderDashboard(); renderGerer(); renderSaisie(); renderSignaux();
+      toast('✅ Données restaurées avec succès !', 3000);
+    } catch(err) { toast('❌ Fichier invalide ou corrompu', 3000); }
+  };
+  reader.readAsText(file); event.target.value='';
+}
+
+function toggleAutoBackup() {
+  settings.autoBackup = settings.autoBackup===false ? true : false;
+  save();
+  const tog = document.getElementById('toggle-autobackup');
+  if (tog) tog.classList.toggle('on', settings.autoBackup!==false);
+  toast(settings.autoBackup!==false ? '✅ Sauvegarde auto activée (chaque lundi)' : 'Sauvegarde auto désactivée');
+}
+
+function updateBackupUI() {
+  const lastBackup = DB.get('brvm_last_backup');
+  const infoEl = document.getElementById('last-backup-info');
+  const iconEl = document.getElementById('backup-status-icon');
+  const reminderEl = document.getElementById('backup-reminder');
+  const togEl = document.getElementById('toggle-autobackup');
+  if (togEl) togEl.classList.toggle('on', settings.autoBackup!==false);
+
+  if (!lastBackup) {
+    if (infoEl) infoEl.textContent = 'Jamais sauvegardé — exporte maintenant !';
+    if (iconEl) iconEl.textContent = '🔴';
+    if (reminderEl && stocks.length) {
+      reminderEl.style.display='block';
+      const rt = document.getElementById('backup-reminder-text');
+      if (rt) rt.textContent = 'Tu n\'as jamais fait de sauvegarde. Si tu perds ton téléphone ou vides le cache, toutes tes données seront perdues.';
+    }
+    return;
+  }
+  const lastDate = new Date(lastBackup);
+  const diffDays = Math.floor((Date.now()-lastDate)/(86400000));
+  const dateStr = lastDate.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+  if (infoEl) {
+    if (diffDays===0) infoEl.textContent=`Aujourd'hui à ${lastDate.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
+    else if (diffDays===1) infoEl.textContent=`Hier — ${dateStr}`;
+    else infoEl.textContent=`Il y a ${diffDays} jours — ${dateStr}`;
+  }
+  if (iconEl) iconEl.textContent = diffDays<=7?'🟢':diffDays<=14?'🟡':'🔴';
+  if (reminderEl) {
+    if (diffDays>7) {
+      reminderEl.style.display='block';
+      const rt=document.getElementById('backup-reminder-text');
+      if (rt) rt.textContent=`Dernière sauvegarde il y a ${diffDays} jours. Pense à exporter tes données.`;
+    } else { reminderEl.style.display='none'; }
+  }
+}
+
+function checkAutoBackup() {
+  if (settings.autoBackup===false || !stocks.length) return;
+  const lastBackup = DB.get('brvm_last_backup');
+  const now = new Date();
+  if (lastBackup) {
+    const diffDays = Math.floor((now-new Date(lastBackup))/86400000);
+    if (diffDays < 7) return;
+  }
+  // Auto download after short delay with notification
+  setTimeout(() => {
+    toast('📦 Sauvegarde hebdomadaire automatique…', 3500);
+    setTimeout(() => exportData(true), 3000);
+  }, 2000);
+}
+
+// ── PWA INSTALL ────────────────────────────────────────────────────────────
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').classList.add('show');
+});
+
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      document.getElementById('install-banner').classList.remove('show');
+    });
+  } else {
+    showInstallGuide();
+  }
+}
+
+function showInstallGuide() {
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const isIOS = /iPhone|iPad/i.test(navigator.userAgent);
+  const isDesktop = !isAndroid && !isIOS;
+  let steps = '';
+  if (isAndroid) steps = `<b>Sur Android (Chrome) :</b><br>1. Ouvre ce fichier dans Chrome<br>2. Menu ⋮ → "Ajouter à l'écran d'accueil"<br>3. Confirmer → l'icône apparaît sur ton bureau`;
+  else if (isIOS) steps = `<b>Sur iPhone/iPad (Safari) :</b><br>1. Ouvre dans Safari<br>2. Bouton Partager ⬆️ → "Sur l'écran d'accueil"<br>3. Confirmer → icône ajoutée`;
+  else steps = `<b>Sur PC/Mac (Chrome/Edge) :</b><br>1. Ouvre dans Chrome ou Edge<br>2. Clique l'icône ⊕ dans la barre d'adresse<br>3. Ou Menu → "Installer BRVM Tracker"`;
+  const banner = document.getElementById('install-banner');
+  document.getElementById('install-steps').innerHTML = steps;
+  banner.classList.add('show');
+  banner.scrollIntoView({behavior:'smooth'});
+  showPage('gerer', document.querySelectorAll('.nav-btn')[3]);
+}
+
+// ── SERVICE WORKER (inline via blob) ──────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  const swCode = `
+const CACHE = 'brvm-v1';
+self.addEventListener('install', e => {
+  self.skipWaiting();
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(['/'])));
+});
+self.addEventListener('fetch', e => {
+  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match('/'))));
+});
+  `;
+  const swBlob = new Blob([swCode], {type:'application/javascript'});
+  const swUrl = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swUrl).catch(() => {});
+}
+
+// ── AUTO-REFRESH DEPUIS GOOGLE SHEETS CSV ─────────────────────────────────
+// Structure CSV : Symbole, Nom, Volume, Cours veille, Cours Ouverture, Cours Clôture, Variation(%)
+// Problème connu : encodage â€˜ au lieu des espaces dans les nombres => on nettoie
+
+const GSHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQe-hHtE28o5PkZgD6upsM0-6R_jirZwZvkI-eoUC24da7IftqVTDtRLFWgFS5VCq8AIrVgsl75SaI_/pub?gid=1144254278&single=true&output=csv";
+
+function cleanNumber(str) {
+  if (!str) return NaN;
+  // Supprimer tout ce qui n'est pas chiffre, virgule, point, signe + ou -
+  // Les prix BRVM ont des espaces comme séparateurs de milliers : "3 660" ou "3â€˜660"
+  // On garde uniquement les chiffres et la virgule/point décimale
+  let s = str.replace(/[^\d,\.\-\+]/g, '');
+  // Gérer la virgule décimale française
+  // Si virgule en dernière position avec 2 chiffres => décimale
+  s = s.replace(',', '.');
+  return parseFloat(s);
+}
+
+async function refreshBRVM() {
+  const btn    = document.getElementById('refresh-btn');
+  const icon   = document.getElementById('refresh-icon');
+  const label  = document.getElementById('refresh-label');
+  const infoEl = document.getElementById('last-refresh-info');
+
+  btn.disabled = true; btn.style.background = 'var(--panel2)';
+  icon.textContent = '⏳'; label.textContent = 'En cours…';
+  infoEl.style.display = 'block'; infoEl.style.color = 'var(--muted)';
+  infoEl.textContent = '🔄 Lecture du fichier BRVM…';
+
+  try {
+    const res = await fetch(GSHEET_CSV);
+    if (!res.ok) throw new Error(`Impossible de lire le fichier (HTTP ${res.status})`);
+    const csv = await res.text();
+    if (!csv || csv.length < 20) throw new Error('Fichier CSV vide');
+
+    // Découper en lignes puis en colonnes
+    // Attention : certaines valeurs sont entre guillemets (ex: "0,83")
+    function parseCSVLine(line) {
+      const cols = [];
+      let cur = '', inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') { inQ = !inQ; }
+        else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+        else { cur += c; }
+      }
+      cols.push(cur.trim());
+      return cols;
+    }
+
+    const lines = csv.trim().split('\n');
+    // Ligne 0 = en-têtes : Symbole, Nom, Volume, Cours veille, Cours Ouverture, Cours Clôture, Variation
+    // Index :               0        1    2        3              4                5               6
+    const COL_TICKER = 0;
+    const COL_VOL    = 2;
+    const COL_CLOSE  = 5;  // Cours Clôture (FCFA)
+    const COL_VAR    = 6;  // Variation (%)
+
+    const todayStr = today();
+    const now = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    let matched = 0, created = 0;
+
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      const cols = parseCSVLine(lines[i]);
+      if (cols.length < 6) continue;
+
+      const ticker = (cols[COL_TICKER] || '').toUpperCase().trim();
+      if (!ticker || ticker.length < 2 || ticker.length > 6) continue;
+      if (!/^[A-Z]/.test(ticker)) continue;
+
+      const price     = cleanNumber(cols[COL_CLOSE]);
+      const variation = cleanNumber(cols[COL_VAR]) || 0;
+      const volume    = parseInt((cols[COL_VOL] || '').replace(/[^\d]/g, '')) || 0;
+
+      if (isNaN(price) || price <= 0) continue;
+
+      let stock = stocks.find(s => (s.ticker || '').toUpperCase() === ticker);
+      if (!stock) {
+        // Essayer aussi le nom partiel pour matcher les stocks existants
+        const colName = (cols[1] || '').toLowerCase();
+        stock = stocks.find(s => s.name && s.name.toLowerCase().includes(colName.slice(0,8)));
+      }
+      if (!stock) {
+        stock = {
+          id: 'brvm_' + ticker + '_' + Date.now(),
+          name: cols[1] || ticker,
+          ticker: ticker,
+          price: price,
+          sector: 'Autre'
+        };
+        stocks.push(stock);
+        created++;
+      }
+
+      stock.price = price;
+      if (!entries[stock.id]) entries[stock.id] = [];
+      entries[stock.id] = entries[stock.id].filter(e => e.date !== todayStr);
+      entries[stock.id].push({ date: todayStr, close: price, volume: volume, variation: variation });
+      entries[stock.id].sort((a, b) => a.date.localeCompare(b.date));
+      matched++;
+    }
+
+    if (!matched) throw new Error('Aucun cours valide trouvé dans le fichier');
+
+    save(); renderDashboard(); renderSignaux();
+
+    const summary = `✅ ${matched} cours mis à jour${created ? ` · ${created} nouveaux` : ''} — ${now}`;
+    infoEl.style.color = 'var(--green)'; infoEl.textContent = summary;
+    DB.set('brvm_last_refresh', summary);
+    toast(summary, 5000);
+
+  } catch(err) {
+    infoEl.style.color = 'var(--red)';
+    infoEl.textContent = '❌ ' + err.message;
+    console.error('[BRVM refresh]', err);
+    toast('❌ ' + err.message.slice(0, 80), 6000);
+  }
+
+  btn.disabled = false; btn.style.background = 'var(--accent)';
+  icon.textContent = '🔄'; label.textContent = 'Actualiser';
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+// Add sample data if empty
+if (!stocks.length) {
+  const sample = [
+    {id:'s1', name:'SONATEL SN', ticker:'SNTS', price:17500, sector:'Télécom'},
+    {id:'s2', name:'ECOBANK TG', ticker:'ECOT', price:2450, sector:'Finance'},
+    {id:'s3', name:'ORANGE CI',  ticker:'ORAC', price:9200, sector:'Télécom'},
+    {id:'s4', name:'CIE CI',     ticker:'CIEC', price:2850, sector:'Energie'},
+    {id:'s5', name:'PALMCI CI',  ticker:'PLMC', price:7200, sector:'Agro'},
+  ];
+  const days = ['2026-02-17','2026-02-24','2026-03-03','2026-03-10'];
+  sample.forEach(s => {
+    stocks.push(s);
+    entries[s.id] = days.map((d,i) => ({
+      date: d,
+      close: Math.round(s.price * (0.96 + i*0.015 + Math.random()*0.01)),
+      volume: Math.round(800 + Math.random()*500 + (i===3?1800:0)),
+      variation: parseFloat((-1 + i*0.5 + Math.random()).toFixed(2))
+    }));
+  });
+  save();
+}
+
+renderDashboard();
+checkAutoBackup();
+
+// Restaurer info dernière MàJ
+const lastR = DB.get('brvm_last_refresh', null);
+if (lastR) {
+  const el = document.getElementById('last-refresh-info');
+  if (el) { el.style.display = 'block'; el.textContent = `Dernière MàJ : ${lastR}`; }
+}
+</script>
+</body>
+</html>
