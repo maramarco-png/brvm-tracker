@@ -761,39 +761,39 @@ const SIGNAL_META = {
 // ── PHASES WYCKOFF ─────────────────────────────────────────────────────────
 const WYCKOFF = {
   Accumulation: {
-    icon: '🟡', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)',
-    label: 'Accumulation',
-    what: 'Les grands investisseurs achètent discrètement. Le cours bouge peu mais les volumes augmentent.',
-    attitude: '✅ Bon point d'entrée progressif. Ne pas tout mettre en une fois. Observer 2–3 séances avant d'agir franchement.',
-    conseil: 'ENTRER progressivement'
+    icon: "🟡", color: "#F59E0B", bg: "rgba(245,158,11,0.12)",
+    label: "Accumulation",
+    what: "Les grands investisseurs achetent discretement. Le cours bouge peu mais les volumes augmentent.",
+    attitude: "OK Bon point d'entree progressif. Ne pas tout mettre en une fois. Observer 2-3 seances avant d'agir.",
+    conseil: "ENTRER progressivement"
   },
   Hausse: {
-    icon: '📈', color: '#10B981', bg: 'rgba(16,185,129,0.12)',
-    label: 'Hausse (Markup)',
-    what: 'Le cours monte franchement, soutenu par des volumes croissants. La tendance est établie.',
-    attitude: '✅ Conserver si en position. Renforcer sur les petites corrections. Remonter le stop suiveur régulièrement.',
-    conseil: 'CONSERVER et remonter le stop'
+    icon: "📈", color: "#10B981", bg: "rgba(16,185,129,0.12)",
+    label: "Hausse (Markup)",
+    what: "Le cours monte franchement, soutenu par des volumes croissants. La tendance est etablie.",
+    attitude: "OK Conserver si en position. Renforcer sur les petites corrections. Remonter le stop suiveur.",
+    conseil: "CONSERVER et remonter le stop"
   },
   Distribution: {
-    icon: '⚠️', color: '#F97316', bg: 'rgba(249,115,22,0.12)',
-    label: 'Distribution',
-    what: 'Le cours plafonne malgré des volumes élevés. Les gros investisseurs revendent discrètement.',
-    attitude: '🔔 Signal de sortie partielle ou totale. Remonter votre stop. Ne pas se laisser emporter par l'euphorie.',
-    conseil: 'SORTIR partiellement ou totalement'
+    icon: "⚠️", color: "#F97316", bg: "rgba(249,115,22,0.12)",
+    label: "Distribution",
+    what: "Le cours plafonne malgre des volumes eleves. Les gros investisseurs revendent discretement.",
+    attitude: "ATTENTION Signal de sortie partielle ou totale. Remonter votre stop.",
+    conseil: "SORTIR partiellement ou totalement"
   },
   Baisse: {
-    icon: '📉', color: '#EF4444', bg: 'rgba(239,68,68,0.12)',
-    label: 'Baisse (Markdown)',
-    what: 'Le cours chute, dominé par les vendeurs. Le mouvement peut s'accélérer.',
-    attitude: '🚫 Ne pas acheter "parce que c'est moins cher". Attendre une stabilisation franche avant de reconsidérer.',
-    conseil: 'NE PAS ACHETER — attendre'
+    icon: "📉", color: "#EF4444", bg: "rgba(239,68,68,0.12)",
+    label: "Baisse (Markdown)",
+    what: "Le cours chute, domine par les vendeurs. Le mouvement peut s'accelerer.",
+    attitude: "STOP Ne pas acheter parce que c'est moins cher. Attendre une stabilisation franche.",
+    conseil: "NE PAS ACHETER"
   },
   Consolidation: {
-    icon: '⏸️', color: '#64748B', bg: 'rgba(100,116,139,0.08)',
-    label: 'Consolidation',
-    what: 'Indécision entre acheteurs et vendeurs. Le cours évolue dans une plage étroite.',
-    attitude: '⏳ Attendre un signal clair — cassure à la hausse avec volume — avant d'agir.',
-    conseil: 'ATTENDRE un signal clair'
+    icon: "⏸️", color: "#64748B", bg: "rgba(100,116,139,0.08)",
+    label: "Consolidation",
+    what: "Indecision entre acheteurs et vendeurs. Le cours evolue dans une plage etroite.",
+    attitude: "ATTENDRE un signal clair avant d'agir.",
+    conseil: "ATTENDRE un signal clair"
   }
 };
 
@@ -2124,7 +2124,7 @@ function ajouterPosition() {
 
   if (!stockId) { toast('⚠️ Sélectionne une action'); return; }
   if (!qty || qty <= 0) { toast('⚠️ Entre une quantité'); return; }
-  if (!prix || prix <= 0) { toast('⚠️ Entre un prix d\'achat'); return; }
+  if (!prix || prix <= 0) { toast('Entre un prix achat'); return; }
 
   const achat = { date: dateAch, qty, prix, frais };
   const existing = portfolio.find(p => p.stockId === stockId);
