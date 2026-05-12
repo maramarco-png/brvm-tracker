@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRVM Tracker — Mara</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg: #0a0e1a;
+  --bg2: #111827;
+  --bg3: #1a2235;
+  --border: #1e2d45;
+  --accent: #00d4aa;
+  --accent2: #f59e0b;
+  --accent3: #6366f1;
+  --red: #ef4444;
+  --green: #10b981;
+  --orange: #f97316;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #475569;
+  --card: #131c2e;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* HEADER */
+.header {
+  background: linear-gradient(135deg, #0a0e1a 0%, #111827 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+.logo span { color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.date-badge {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--text2);
+  background: var(--bg3);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+.btn-update {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-update:hover { background: #00f0c0; transform: translateY(-1px); }
+
+/* NAV */
+.nav {
+  display: flex;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav::-webkit-scrollbar { display: none; }
+.nav-btn {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.nav-btn:hover { color: var(--text); }
+
+/* MAIN */
+.main { padding: 16px; max-width: 1200px; margin: 0 auto; }
+
+/* TOAST */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--accent);
+  color: #000;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  z-index: 999;
+  transition: transform 0.3s;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.error { background: var(--red); color: #fff; }
+
+/* MODAL COLLER */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 600px;
+}
+.modal h3 { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+.modal p { color: var(--text2); font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+.modal textarea {
+  width: 100%;
+  height: 200px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  padding: 12px;
+  resize: vertical;
+}
+.modal-btns { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn-secondary {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* CARDS MARCHE */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.stat-value { font-size: 22px; font-weight: 800; font-family: 'Space Mono', monospace; }
+.stat-value.green { color: var(--green); }
+.stat-value.red { color: var(--red); }
+.stat-value.accent { color: var(--accent); }
+
+/* SEARCH */
+.search-bar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  width: 100%;
+  margin-bottom: 12px;
+}
+.search-bar:focus { outline: none; border-color: var(--accent); }
+
+/* TABLE MARCHE */
+.table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  background: var(--bg3);
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text2);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+thead th:hover { color: var(--accent); }
+tbody tr {
+  border-top: 1px solid var(--border);
+  transition: background 0.15s;
+  cursor: pointer;
+}
+tbody tr:hover { background: var(--bg3); }
+tbody td {
+  padding: 10px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.ticker-badge {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: var(--accent);
+}
+.nom-cell { color: var(--text2); font-size: 12px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.cours-cell { font-family: 'Space Mono', monospace; font-weight: 700; }
+.var-cell { font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; }
+.var-cell.pos { color: var(--green); }
+.var-cell.neg { color: var(--red); }
+.var-cell.neu { color: var(--text2); }
+.vol-badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.vol-normal { background: rgba(71,85,105,0.3); color: var(--text2); }
+.vol-haut { background: rgba(245,158,11,0.2); color: var(--accent2); }
+.vol-tres-haut { background: rgba(239,68,68,0.2); color: var(--red); }
+.phase-badge {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* MOMENTUM CELLS */
+.mom-cell { font-family: 'Space Mono', monospace; font-size: 11px; }
+.mom-pos { color: var(--green); }
+.mom-neg { color: var(--red); }
+.mom-neu { color: var(--text3); }
+
+/* DETAIL PANEL */
+.detail-panel {
+  display: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 12px;
+}
+.detail-panel.open { display: block; }
+.detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.detail-title { font-size: 20px; font-weight: 800; }
+.detail-sub { color: var(--text2); font-size: 13px; margin-top: 2px; }
+.wyckoff-box {
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid;
+}
+.wyckoff-label { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+.wyckoff-what { font-size: 13px; color: var(--text2); margin-bottom: 8px; line-height: 1.5; }
+.wyckoff-conseil {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.3);
+}
+.mom-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.mom-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+.mom-card-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+.mom-card-val { font-size: 20px; font-weight: 800; font-family: 'Space Mono', monospace; }
+.close-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* PORTEFEUILLE */
+.ptf-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: gap: 10px; }
+.ptf-title { font-size: 20px; font-weight: 800; }
+.ptf-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.ptf-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.ptf-card-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.ptf-card-val { font-size: 18px; font-weight: 800; font-family: 'Space Mono', monospace; }
+
+/* POSITION CARD */
+.pos-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 10px;
+  transition: border-color 0.2s;
+}
+.pos-card.alert-target { border-color: var(--green); }
+.pos-card.alert-stop { border-color: var(--red); }
+.pos-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.pos-name { font-size: 15px; font-weight: 700; }
+.pos-ticker { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--accent); }
+.pos-pv {
+  font-family: 'Space Mono', monospace;
+  font-size: 18px;
+  font-weight: 800;
+  text-align: right;
+}
+.pos-pv-pct { font-size: 12px; color: var(--text2); }
+.pos-details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.pos-detail-item { font-size: 11px; }
+.pos-detail-label { color: var(--text3); margin-bottom: 2px; }
+.pos-detail-val { font-family: 'Space Mono', monospace; font-weight: 700; font-size: 12px; }
+
+/* PROGRESS BAR */
+.progress-wrap { margin-bottom: 10px; }
+.progress-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text3); margin-bottom: 4px; }
+.progress-bar {
+  height: 6px;
+  background: var(--bg3);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s;
+}
+
+/* ALERT BADGE */
+.alert-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+.alert-target-badge { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+.alert-stop-badge { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+.alert-warn-badge { background: rgba(245,158,11,0.15); color: var(--accent2); border: 1px solid rgba(245,158,11,0.3); }
+
+/* MODAL AJOUT POSITION */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 12px; color: var(--text2); font-weight: 600; }
+.form-group input, .form-group select {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  padding: 10px 12px;
+}
+.form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+.form-full { grid-column: 1 / -1; }
+
+/* OPPORTUNITES */
+.opp-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.opp-card:hover { border-color: var(--accent); }
+.opp-rank {
+  font-family: 'Space Mono', monospace;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text3);
+  min-width: 36px;
+}
+.opp-rank.top { color: var(--accent); }
+.opp-info { flex: 1; }
+.opp-name { font-size: 15px; font-weight: 700; }
+.opp-ticker { font-size: 11px; color: var(--accent); font-family: 'Space Mono', monospace; }
+.opp-moms { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.opp-mom {
+  font-size: 11px;
+  font-family: 'Space Mono', monospace;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+.opp-score { text-align: right; }
+.opp-score-val { font-size: 22px; font-weight: 800; font-family: 'Space Mono', monospace; color: var(--accent); }
+.opp-score-label { font-size: 10px; color: var(--text3); }
+
+/* GERER */
+.gerer-section { margin-bottom: 24px; }
+.gerer-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.btn-danger { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); padding: 8px 16px; border-radius: 8px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; }
+.btn-success { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); padding: 8px 16px; border-radius: 8px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; }
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.no-data { text-align: center; padding: 40px; color: var(--text3); font-size: 14px; }
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .settings-grid { grid-template-columns: 1fr; }
+  .mom-grid { grid-template-columns: repeat(3,1fr); }
+  .pos-details { grid-template-columns: repeat(2,1fr); }
+  .header { padding: 10px 12px; }
+  .main { padding: 10px; }
+  tbody td { padding: 8px 10px; }
+  .nom-cell { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">BRVM<span>.</span>tracker</div>
+  <div class="header-right">
+    <div class="date-badge" id="dateBadge">—</div>
+    <button class="btn-update" onclick="ouvrirModalColler()">📋 Coller les cours</button>
+  </div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showTab('marche',this)">📊 Marché</button>
+  <button class="nav-btn" onclick="showTab('opportunites',this)">🎯 Opportunités</button>
+  <button class="nav-btn" onclick="showTab('portefeuille',this)">💼 Portefeuille</button>
+  <button class="nav-btn" onclick="showTab('gerer',this)">⚙️ Gérer</button>
+</nav>
+
+<div class="main">
+  <div id="tab-marche"></div>
+  <div id="tab-opportunites" style="display:none"></div>
+  <div id="tab-portefeuille" style="display:none"></div>
+  <div id="tab-gerer" style="display:none"></div>
+</div>
+
+<!-- MODAL COLLER -->
+<div class="modal-overlay" id="modalColler">
+  <div class="modal">
+    <h3>📋 Coller les cours Excel</h3>
+    <p>Dans Excel, sélectionnez toutes les colonnes de votre tableau BRVM (Symbole, Nom, Volume, Cours veille, Cours Ouverture, Cours Clôture, Variation) puis Ctrl+C, et collez ici avec Ctrl+V.</p>
+    <textarea id="collerTexte" placeholder="Collez ici votre tableau Excel..."></textarea>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="fermerModal('modalColler')">Annuler</button>
+      <button class="btn-primary" onclick="importerCours()">✅ Importer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AJOUT POSITION -->
+<div class="modal-overlay" id="modalPosition">
+  <div class="modal">
+    <h3>➕ Ajouter une position</h3>
+    <p>Entrez les détails de votre achat. Le prix doit inclure toutes les taxes et frais.</p>
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>Action</label>
+        <select id="ptfTicker"></select>
+      </div>
+      <div class="form-group">
+        <label>Quantité achetée</label>
+        <input type="number" id="ptfQte" placeholder="ex: 5" min="1">
+      </div>
+      <div class="form-group">
+        <label>Prix achat tout compris (FCFA)</label>
+        <input type="number" id="ptfPrix" placeholder="ex: 8950">
+      </div>
+      <div class="form-group">
+        <label>Date achat</label>
+        <input type="date" id="ptfDate">
+      </div>
+      <div class="form-group">
+        <label>Target personnel (%)</label>
+        <input type="number" id="ptfTarget" placeholder="35">
+      </div>
+      <div class="form-group">
+        <label>Stop-loss (%)</label>
+        <input type="number" id="ptfStop" placeholder="10">
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="fermerModal('modalPosition')">Annuler</button>
+      <button class="btn-primary" onclick="sauvegarderPosition()">✅ Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════
+// DONNÉES BRVM — 47 ACTIONS
+// ═══════════════════════════════════════
+const BRVM_ACTIONS = [
+  {s:"ABJC",n:"SERVAIR ABIDJAN"},
+  {s:"BICB",n:"BANQUE INTERNATIONALE POUR L'INDUSTRIE ET LE COMMERCE DU BENIN"},
+  {s:"BICC",n:"BICI COTE D'IVOIRE"},
+  {s:"BNBC",n:"BERNABE COTE D'IVOIRE"},
+  {s:"BOAB",n:"BANK OF AFRICA BENIN"},
+  {s:"BOABF",n:"BANK OF AFRICA BURKINA FASO"},
+  {s:"BOAC",n:"BANK OF AFRICA COTE D'IVOIRE"},
+  {s:"BOAM",n:"BANK OF AFRICA MALI"},
+  {s:"BOAN",n:"BANK OF AFRICA NIGER"},
+  {s:"BOAS",n:"BANK OF AFRICA SENEGAL"},
+  {s:"CABC",n:"SICABLE COTE D'IVOIRE"},
+  {s:"CBIBF",n:"CORIS BANK INTERNATIONAL BURKINA FASO"},
+  {s:"CFAC",n:"CFAO MOTORS COTE D'IVOIRE"},
+  {s:"CIEC",n:"CIE COTE D'IVOIRE"},
+  {s:"ECOC",n:"ECOBANK COTE D'IVOIRE"},
+  {s:"ETIT",n:"ECOBANK TRANSNATIONAL INCORPORATED TOGO"},
+  {s:"FTSC",n:"FILTISAC COTE D'IVOIRE"},
+  {s:"LNBB",n:"LOTERIE NATIONALE DU BENIN"},
+  {s:"NEIC",n:"NEI-CEDA COTE D'IVOIRE"},
+  {s:"NSBC",n:"NSIA BANQUE COTE D'IVOIRE"},
+  {s:"NTLC",n:"NESTLE COTE D'IVOIRE"},
+  {s:"ONTBF",n:"ONATEL BURKINA FASO"},
+  {s:"ORAC",n:"ORANGE COTE D'IVOIRE"},
+  {s:"ORGT",n:"ORAGROUP TOGO"},
+  {s:"PALC",n:"PALM COTE D'IVOIRE"},
+  {s:"PRSC",n:"TRACTAFRIC MOTORS COTE D'IVOIRE"},
+  {s:"SAFC",n:"SAFCA COTE D'IVOIRE"},
+  {s:"SCRC",n:"SUCRIVOIRE COTE D'IVOIRE"},
+  {s:"SDCC",n:"SODE COTE D'IVOIRE"},
+  {s:"SDSC",n:"AFRICA GLOBAL LOGISTICS COTE D'IVOIRE"},
+  {s:"SEMC",n:"EVIOSYS PACKAGING SIEM COTE D'IVOIRE"},
+  {s:"SGBC",n:"SOCIETE GENERALE COTE D'IVOIRE"},
+  {s:"SHEC",n:"VIVO ENERGY COTE D'IVOIRE"},
+  {s:"SIBC",n:"SOCIETE IVOIRIENNE DE BANQUE COTE D'IVOIRE"},
+  {s:"SICC",n:"SICOR COTE D'IVOIRE"},
+  {s:"SIVC",n:"ERIUM COTE D'IVOIRE"},
+  {s:"SLBC",n:"SOLIBRA COTE D'IVOIRE"},
+  {s:"SMBC",n:"SMB COTE D'IVOIRE"},
+  {s:"SNTS",n:"SONATEL SENEGAL"},
+  {s:"SOGC",n:"SOGB COTE D'IVOIRE"},
+  {s:"SPHC",n:"SAPH COTE D'IVOIRE"},
+  {s:"STAC",n:"SETAO COTE D'IVOIRE"},
+  {s:"STBC",n:"SITAB COTE D'IVOIRE"},
+  {s:"TTLC",n:"TOTALENERGIES MARKETING COTE D'IVOIRE"},
+  {s:"TTLS",n:"TOTALENERGIES MARKETING SENEGAL"},
+  {s:"UNLC",n:"UNILEVER COTE D'IVOIRE"},
+  {s:"UNXC",n:"UNIWAX COTE D'IVOIRE"}
+];
+
+// ═══════════════════════════════════════
+// WYCKOFF
+// ═══════════════════════════════════════
+const WYCKOFF = {
+  Accumulation: {
+    icon:"🟡", color:"#F59E0B", bg:"rgba(245,158,11,0.1)", border:"rgba(245,158,11,0.3)",
+    label:"Accumulation",
+    what:"Les grands investisseurs achetent discretement. Le cours bouge peu mais les volumes augmentent progressivement.",
+    attitude:"Bon point d'entree progressif. Ne pas tout mettre en une seule fois. Observer 2 a 3 seances avant d'agir.",
+    conseil:"ENTRER progressivement — petites doses"
+  },
+  Hausse: {
+    icon:"📈", color:"#10B981", bg:"rgba(16,185,129,0.1)", border:"rgba(16,185,129,0.3)",
+    label:"Hausse (Markup)",
+    what:"Le cours monte franchement, soutenu par des volumes croissants. La tendance est etablie et confirmee.",
+    attitude:"Conserver si vous etes en position. Vous pouvez renforcer sur les petites corrections. Remonter votre stop-loss.",
+    conseil:"CONSERVER et remonter le stop"
+  },
+  Distribution: {
+    icon:"⚠️", color:"#F97316", bg:"rgba(249,115,22,0.1)", border:"rgba(249,115,22,0.3)",
+    label:"Distribution",
+    what:"Le cours plafonne malgre des volumes eleves. Les gros investisseurs revendent ce qu'ils ont accumule.",
+    attitude:"Signal de sortie partielle ou totale. Ne pas se laisser griser. Remonter votre stop au plus pres.",
+    conseil:"SORTIR partiellement ou totalement"
+  },
+  Baisse: {
+    icon:"📉", color:"#EF4444", bg:"rgba(239,68,68,0.1)", border:"rgba(239,68,68,0.3)",
+    label:"Baisse (Markdown)",
+    what:"Le cours chute, les vendeurs dominent. Le grand public panique. Le mouvement peut s'accelerer.",
+    attitude:"Ne pas acheter parce que c'est moins cher. Attendre une stabilisation franche avant de reconsiderer.",
+    conseil:"NE PAS ACHETER — attendre la stabilisation"
+  },
+  Consolidation: {
+    icon:"⏸️", color:"#64748B", bg:"rgba(100,116,139,0.1)", border:"rgba(100,116,139,0.3)",
+    label:"Consolidation",
+    what:"Indecision entre acheteurs et vendeurs. Le cours evolue dans une plage etroite sans direction claire.",
+    attitude:"Attendre un signal clair — cassure a la hausse avec volume — avant d'agir. La patience est une position.",
+    conseil:"ATTENDRE un signal clair"
+  }
+};
+
+// ═══════════════════════════════════════
+// DB LOCAL STORAGE
+// ═══════════════════════════════════════
+const DB = {
+  get(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch(e) { return def; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} }
+};
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let historique = DB.get('brvm_historique', {});
+// { "ABJC": [{date, cloture, volume, variation}, ...] }
+let portefeuille = DB.get('brvm_portefeuille', []);
+// [{id, ticker, nom, qte, prixAchat, date, target, stop}]
+let settings = DB.get('brvm_settings', { target: 35, stop: 10 });
+let sortCol = 'var'; let sortDir = -1;
+let searchQ = '';
+let activeRow = null;
+
+// ═══════════════════════════════════════
+// UTILITAIRES
+// ═══════════════════════════════════════
+function fmt(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return Math.round(n).toLocaleString('fr-FR');
+}
+function fmtPct(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+}
+function toast(msg, err=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (err ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+function showTab(name, btn) {
+  ['marche','opportunites','portefeuille','gerer'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name ? '' : 'none';
+  });
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  render(name);
+}
+function ouvrirModalColler() {
+  document.getElementById('collerTexte').value = '';
+  document.getElementById('modalColler').classList.add('open');
+}
+function fermerModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ═══════════════════════════════════════
+// IMPORT EXCEL
+// ═══════════════════════════════════════
+function importerCours() {
+  const txt = document.getElementById('collerTexte').value.trim();
+  if (!txt) { toast('Rien a coller !', true); return; }
+
+  const lignes = txt.split('\n').filter(l => l.trim());
+  let nb = 0;
+  const dateStr = new Date().toISOString().slice(0,10);
+
+  lignes.forEach(ligne => {
+    const cols = ligne.split('\t').map(c => c.trim());
+    if (cols.length < 2) return;
+
+    // Chercher le ticker dans la première colonne
+    const ticker = cols[0].toUpperCase().trim();
+    const action = BRVM_ACTIONS.find(a => a.s === ticker);
+    if (!action) return;
+
+    // Parser les colonnes selon format Excel:
+    // Symbole | Nom | Volume | Cours veille | Cours Ouverture | Cours Cloture | Variation
+    let cloture = null, volume = null, variation = null;
+
+    if (cols.length >= 7) {
+      // Format complet Excel
+      volume   = parseFloat(cols[2].replace(/\s/g,'').replace(',','.')) || 0;
+      cloture  = parseFloat(cols[5].replace(/\s/g,'').replace(',','.'));
+      variation= parseFloat(cols[6].replace(/\s/g,'').replace(',','.'));
+    } else if (cols.length >= 3) {
+      // Format minimal: Ticker | Cours | Variation
+      cloture  = parseFloat(cols[1].replace(/\s/g,'').replace(',','.'));
+      variation= cols[2] ? parseFloat(cols[2].replace(/\s/g,'').replace(',','.')) : null;
+    } else if (cols.length >= 2) {
+      cloture = parseFloat(cols[1].replace(/\s/g,'').replace(',','.'));
+    }
+
+    if (!cloture || isNaN(cloture)) return;
+
+    if (!historique[ticker]) historique[ticker] = [];
+
+    // Remplacer si meme date, sinon ajouter
+    const idx = historique[ticker].findIndex(e => e.date === dateStr);
+    const entry = { date: dateStr, cloture, volume: volume||0, variation: variation||0 };
+    if (idx >= 0) historique[ticker][idx] = entry;
+    else historique[ticker].push(entry);
+
+    // Garder max 52 semaines
+    historique[ticker].sort((a,b) => a.date.localeCompare(b.date));
+    if (historique[ticker].length > 52) historique[ticker] = historique[ticker].slice(-52);
+
+    nb++;
+  });
+
+  DB.set('brvm_historique', historique);
+  fermerModal('modalColler');
+
+  // Update date badge
+  document.getElementById('dateBadge').textContent = new Date().toLocaleDateString('fr-FR', {day:'2-digit',month:'short',year:'numeric'});
+  DB.set('brvm_lastUpdate', new Date().toISOString());
+
+  toast('✅ ' + nb + ' cours importes avec succes');
+  render('marche');
+}
+
+// ═══════════════════════════════════════
+// CALCULS MOMENTUM
+// ═══════════════════════════════════════
+function getMomentum(ticker, semaines) {
+  const hist = historique[ticker];
+  if (!hist || hist.length < 2) return null;
+  const sorted = [...hist].sort((a,b) => a.date.localeCompare(b.date));
+  const dernier = sorted[sorted.length-1];
+  // Trouver l'entree la plus proche de N semaines en arriere
+  const targetDate = new Date(dernier.date);
+  targetDate.setDate(targetDate.getDate() - semaines*7);
+  const targetStr = targetDate.toISOString().slice(0,10);
+  // Trouver l'entree la plus proche (avant ou egal)
+  let ref = null;
+  for (let i = sorted.length-2; i >= 0; i--) {
+    if (sorted[i].date <= targetStr) { ref = sorted[i]; break; }
+  }
+  if (!ref) ref = sorted[0];
+  if (!ref || ref.cloture === 0) return null;
+  return ((dernier.cloture - ref.cloture) / ref.cloture) * 100;
+}
+
+function getPhaseWyckoff(ticker) {
+  const m1 = getMomentum(ticker, 1);
+  const m2 = getMomentum(ticker, 2);
+  const m4 = getMomentum(ticker, 4);
+  const hist = historique[ticker];
+  if (!hist || hist.length < 2) return 'Consolidation';
+
+  const sorted = [...hist].sort((a,b) => a.date.localeCompare(b.date));
+  const recent = sorted.slice(-4);
+  const avgVol = recent.reduce((s,e) => s + e.volume, 0) / recent.length;
+  const lastVol = sorted[sorted.length-1].volume;
+  const volHaut = lastVol > avgVol * 1.5;
+
+  if (m4 === null) return 'Consolidation';
+
+  // Logique Wyckoff simplifiee
+  if (m1 > 1 && m2 > 2 && m4 > 4) return 'Hausse';
+  if (m1 < -1 && m2 < -2 && m4 < -4) return 'Baisse';
+  if (m4 < 0 && m1 > 0 && volHaut) return 'Accumulation';
+  if (m4 > 5 && m1 < 0 && volHaut) return 'Distribution';
+  return 'Consolidation';
+}
+
+function getScoreOpp(ticker) {
+  const m1 = getMomentum(ticker, 1) || 0;
+  const m2 = getMomentum(ticker, 2) || 0;
+  const m4 = getMomentum(ticker, 4) || 0;
+  const phase = getPhaseWyckoff(ticker);
+  let bonus = 0;
+  if (phase === 'Hausse') bonus = 20;
+  if (phase === 'Accumulation') bonus = 10;
+  if (phase === 'Distribution') bonus = -15;
+  if (phase === 'Baisse') bonus = -20;
+  return Math.round(m1 * 1.5 + m2 * 1.0 + m4 * 0.5 + bonus);
+}
+
+function getVolSignal(ticker) {
+  const hist = historique[ticker];
+  if (!hist || hist.length < 3) return 'normal';
+  const sorted = [...hist].sort((a,b) => a.date.localeCompare(b.date));
+  const last = sorted[sorted.length-1];
+  const prev = sorted.slice(-5,-1);
+  if (!prev.length || !last.volume) return 'normal';
+  const avg = prev.reduce((s,e) => s + e.volume, 0) / prev.length;
+  if (!avg) return 'normal';
+  const ratio = last.volume / avg;
+  if (ratio >= 3) return 'tres-haut';
+  if (ratio >= 1.8) return 'haut';
+  return 'normal';
+}
+
+function getDernierCours(ticker) {
+  const hist = historique[ticker];
+  if (!hist || !hist.length) return null;
+  const sorted = [...hist].sort((a,b) => a.date.localeCompare(b.date));
+  return sorted[sorted.length-1];
+}
+
+// ═══════════════════════════════════════
+// RENDER MARCHE
+// ═══════════════════════════════════════
+function renderMarche() {
+  const el = document.getElementById('tab-marche');
+
+  // Stats globales
+  let nbHausse = 0, nbBaisse = 0, nbNeutre = 0;
+  BRVM_ACTIONS.forEach(a => {
+    const d = getDernierCours(a.s);
+    if (!d) return;
+    if (d.variation > 0) nbHausse++;
+    else if (d.variation < 0) nbBaisse++;
+    else nbNeutre++;
+  });
+  const avecData = BRVM_ACTIONS.filter(a => getDernierCours(a.s)).length;
+
+  let html = `
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">Actions suivies</div><div class="stat-value accent">${avecData}/47</div></div>
+    <div class="stat-card"><div class="stat-label">En hausse</div><div class="stat-value green">${nbHausse}</div></div>
+    <div class="stat-card"><div class="stat-label">En baisse</div><div class="stat-value red">${nbBaisse}</div></div>
+    <div class="stat-card"><div class="stat-label">Stables</div><div class="stat-value">${nbNeutre}</div></div>
+  </div>
+  <input class="search-bar" type="text" placeholder="🔍 Rechercher une action..." value="${searchQ}" oninput="searchQ=this.value;renderMarche()" />
+  <div id="detailPanel" class="detail-panel"></div>
+  <div class="table-wrap">
+  <table>
+  <thead><tr>
+    <th onclick="setSort('ticker')">Ticker</th>
+    <th>Nom</th>
+    <th onclick="setSort('cours')">Cours</th>
+    <th onclick="setSort('var')">Var. Jour</th>
+    <th>Volume</th>
+    <th onclick="setSort('m1')">1 sem</th>
+    <th onclick="setSort('m2')">2 sem</th>
+    <th onclick="setSort('m4')">4 sem</th>
+    <th>Phase</th>
+  </tr></thead>
+  <tbody>`;
+
+  let rows = BRVM_ACTIONS.map(a => {
+    const d = getDernierCours(a.s);
+    const m1 = getMomentum(a.s, 1);
+    const m2 = getMomentum(a.s, 2);
+    const m4 = getMomentum(a.s, 4);
+    const phase = getPhaseWyckoff(a.s);
+    const vol = getVolSignal(a.s);
+    return { ...a, d, m1, m2, m4, phase, vol };
+  });
+
+  // Filtre recherche
+  if (searchQ) {
+    const q = searchQ.toLowerCase();
+    rows = rows.filter(r => r.s.toLowerCase().includes(q) || r.n.toLowerCase().includes(q));
+  }
+
+  // Tri
+  rows.sort((a,b) => {
+    const va = sortCol==='ticker' ? a.s : sortCol==='cours' ? (a.d?.cloture||0) : sortCol==='var' ? (a.d?.variation||0) : sortCol==='m1' ? (a.m1||0) : sortCol==='m2' ? (a.m2||0) : sortCol==='m4' ? (a.m4||0) : 0;
+    const vb = sortCol==='ticker' ? b.s : sortCol==='cours' ? (b.d?.cloture||0) : sortCol==='var' ? (b.d?.variation||0) : sortCol==='m1' ? (b.m1||0) : sortCol==='m2' ? (b.m2||0) : sortCol==='m4' ? (b.m4||0) : 0;
+    if (typeof va === 'string') return sortDir * va.localeCompare(vb);
+    return sortDir * (va - vb);
+  });
+
+  rows.forEach(r => {
+    const w = WYCKOFF[r.phase];
+    const phaseBadge = `<span class="phase-badge" style="background:${w.bg};color:${w.color};border:1px solid ${w.border}">${w.icon} ${r.phase}</span>`;
+    const varClass = !r.d ? 'neu' : r.d.variation > 0 ? 'pos' : r.d.variation < 0 ? 'neg' : 'neu';
+    const volLabel = r.vol==='tres-haut' ? '🔥 x3+' : r.vol==='haut' ? '⚡ x2' : '—';
+    const volClass = 'vol-badge vol-'+r.vol;
+    const m1c = r.m1===null?'neu':r.m1>0?'mom-pos':r.m1<0?'mom-neg':'mom-neu';
+    const m2c = r.m2===null?'neu':r.m2>0?'mom-pos':r.m2<0?'mom-neg':'mom-neu';
+    const m4c = r.m4===null?'neu':r.m4>0?'mom-pos':r.m4<0?'mom-neg':'mom-neu';
+
+    html += `<tr onclick="toggleDetail('${r.s}')">
+      <td><span class="ticker-badge">${r.s}</span></td>
+      <td><div class="nom-cell">${r.n}</div></td>
+      <td><span class="cours-cell">${r.d ? fmt(r.d.cloture) : '—'}</span></td>
+      <td><span class="var-cell ${varClass}">${r.d ? fmtPct(r.d.variation) : '—'}</span></td>
+      <td><span class="${volClass}">${volLabel}</span></td>
+      <td><span class="mom-cell ${m1c}">${r.m1!==null?fmtPct(r.m1):'—'}</span></td>
+      <td><span class="mom-cell ${m2c}">${r.m2!==null?fmtPct(r.m2):'—'}</span></td>
+      <td><span class="mom-cell ${m4c}">${r.m4!==null?fmtPct(r.m4):'—'}</span></td>
+      <td>${phaseBadge}</td>
+    </tr>`;
+  });
+
+  if (rows.length === 0) html += `<tr><td colspan="9"><div class="no-data">Aucune action trouvee</div></td></tr>`;
+
+  html += `</tbody></table></div>`;
+  el.innerHTML = html;
+
+  // Restaurer detail si ouvert
+  if (activeRow) toggleDetail(activeRow, true);
+}
+
+function setSort(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = -1; }
+  renderMarche();
+}
+
+function toggleDetail(ticker, forceOpen=false) {
+  if (activeRow === ticker && !forceOpen) {
+    activeRow = null;
+    document.getElementById('detailPanel').classList.remove('open');
+    return;
+  }
+  activeRow = ticker;
+  const panel = document.getElementById('detailPanel');
+  const action = BRVM_ACTIONS.find(a => a.s === ticker);
+  const d = getDernierCours(ticker);
+  const m1 = getMomentum(ticker,1);
+  const m2 = getMomentum(ticker,2);
+  const m4 = getMomentum(ticker,4);
+  const phase = getPhaseWyckoff(ticker);
+  const w = WYCKOFF[phase];
+
+  // Signal naissant
+  let signalNaissant = '';
+  if (m1!==null && m2!==null && m4!==null) {
+    if (m1 > 0 && m2 > m4 && m1 > 0) {
+      if (m1 > m2/2) signalNaissant = `<div class="alert-badge alert-target-badge">🚀 Momentum naissant detecte — acceleration en cours</div>`;
+    }
+  }
+
+  panel.innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">${action?.n || ticker}</div>
+        <div class="detail-sub"><span class="ticker-badge">${ticker}</span> ${d ? '— Dernier cours : ' + fmt(d.cloture) + ' FCFA le ' + d.date : '— Pas de donnees'}</div>
+      </div>
+      <button class="close-btn" onclick="activeRow=null;document.getElementById('detailPanel').classList.remove('open')">✕ Fermer</button>
+    </div>
+    <div class="wyckoff-box" style="background:${w.bg};border-color:${w.border}">
+      <div class="wyckoff-label" style="color:${w.color}">${w.icon} Phase : ${w.label}</div>
+      <div class="wyckoff-what">${w.what}</div>
+      <div class="wyckoff-conseil" style="color:${w.color}">👉 ${w.conseil}</div>
+      <div style="margin-top:8px;font-size:12px;color:var(--text2)">${w.attitude}</div>
+    </div>
+    <div class="mom-grid">
+      <div class="mom-card">
+        <div class="mom-card-label">1 semaine</div>
+        <div class="mom-card-val ${m1===null?'':m1>0?'mom-pos':m1<0?'mom-neg':'mom-neu'}">${m1!==null?fmtPct(m1):'—'}</div>
+      </div>
+      <div class="mom-card">
+        <div class="mom-card-label">2 semaines</div>
+        <div class="mom-card-val ${m2===null?'':m2>0?'mom-pos':m2<0?'mom-neg':'mom-neu'}">${m2!==null?fmtPct(m2):'—'}</div>
+      </div>
+      <div class="mom-card">
+        <div class="mom-card-label">4 semaines</div>
+        <div class="mom-card-val ${m4===null?'':m4>0?'mom-pos':m4<0?'mom-neg':'mom-neu'}">${m4!==null?fmtPct(m4):'—'}</div>
+      </div>
+    </div>
+    ${signalNaissant}
+  `;
+  panel.classList.add('open');
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// ═══════════════════════════════════════
+// RENDER OPPORTUNITES
+// ═══════════════════════════════════════
+function renderOpportunites() {
+  const el = document.getElementById('tab-opportunites');
+  const avecData = BRVM_ACTIONS.filter(a => getDernierCours(a.s));
+
+  if (!avecData.length) {
+    el.innerHTML = `<div class="no-data" style="padding:60px">
+      <div style="font-size:40px;margin-bottom:12px">📋</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px">Pas encore de donnees</div>
+      <div style="color:var(--text2)">Cliquez sur "Coller les cours" pour importer vos premiers cours Excel</div>
+    </div>`;
+    return;
+  }
+
+  const scored = avecData.map(a => ({
+    ...a,
+    score: getScoreOpp(a.s),
+    phase: getPhaseWyckoff(a.s),
+    m1: getMomentum(a.s,1),
+    m2: getMomentum(a.s,2),
+    m4: getMomentum(a.s,4),
+    d: getDernierCours(a.s)
+  })).sort((a,b) => b.score - a.score);
+
+  let html = `<div style="margin-bottom:16px">
+    <div style="font-size:20px;font-weight:800;margin-bottom:4px">🎯 Meilleures Opportunites</div>
+    <div style="color:var(--text2);font-size:13px">Classement par score momentum + phase Wyckoff. Plus le score est eleve, plus le signal est fort.</div>
+  </div>`;
+
+  scored.forEach((r, i) => {
+    const w = WYCKOFF[r.phase];
+    const rankClass = i < 3 ? 'top' : '';
+    const momHtml = [
+      r.m1!==null ? `<span class="opp-mom" style="background:${r.m1>0?'rgba(16,185,129,0.2)':'rgba(239,68,68,0.2)'}; color:${r.m1>0?'var(--green)':'var(--red)'}">${fmtPct(r.m1)} (1s)</span>` : '',
+      r.m2!==null ? `<span class="opp-mom" style="background:${r.m2>0?'rgba(16,185,129,0.2)':'rgba(239,68,68,0.2)'}; color:${r.m2>0?'var(--green)':'var(--red)'}">${fmtPct(r.m2)} (2s)</span>` : '',
+      r.m4!==null ? `<span class="opp-mom" style="background:${r.m4>0?'rgba(16,185,129,0.2)':'rgba(239,68,68,0.2)'}; color:${r.m4>0?'var(--green)':'var(--red)'}">${fmtPct(r.m4)} (4s)</span>` : ''
+    ].join('');
+
+    html += `<div class="opp-card" onclick="showTab('marche',document.querySelector('.nav-btn'));activeRow='${r.s}';renderMarche()">
+      <div class="opp-rank ${rankClass}">#${i+1}</div>
+      <div class="opp-info">
+        <div class="opp-name">${r.n}</div>
+        <div class="opp-ticker">${r.s} — ${r.d ? fmt(r.d.cloture)+' FCFA' : '—'}</div>
+        <div class="opp-moms">${momHtml}</div>
+      </div>
+      <div>
+        <span class="phase-badge" style="background:${w.bg};color:${w.color};border:1px solid ${w.border}">${w.icon} ${r.phase}</span>
+      </div>
+      <div class="opp-score">
+        <div class="opp-score-val" style="color:${r.score>0?'var(--green)':r.score<0?'var(--red)':'var(--text2)'}">${r.score>0?'+':''}${r.score}</div>
+        <div class="opp-score-label">score</div>
+      </div>
+    </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════
+// RENDER PORTEFEUILLE
+// ═══════════════════════════════════════
+function renderPortefeuille() {
+  const el = document.getElementById('tab-portefeuille');
+
+  let totalInvesti = 0, totalValeur = 0;
+  portefeuille.forEach(p => {
+    const d = getDernierCours(p.ticker);
+    const investi = p.prixAchat * p.qte;
+    const valeur = d ? d.cloture * p.qte : investi;
+    totalInvesti += investi;
+    totalValeur += valeur;
+  });
+  const totalPV = totalValeur - totalInvesti;
+  const totalPct = totalInvesti ? (totalPV/totalInvesti)*100 : 0;
+
+  let html = `
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div style="font-size:20px;font-weight:800">💼 Mon Portefeuille</div>
+    <button class="btn-primary" onclick="ouvrirModalPosition()">➕ Ajouter une position</button>
+  </div>
+  <div class="ptf-summary">
+    <div class="ptf-card"><div class="ptf-card-label">Total Investi</div><div class="ptf-card-val">${fmt(totalInvesti)} <span style="font-size:11px;color:var(--text3)">FCFA</span></div></div>
+    <div class="ptf-card"><div class="ptf-card-label">Valeur Actuelle</div><div class="ptf-card-val">${fmt(totalValeur)} <span style="font-size:11px;color:var(--text3)">FCFA</span></div></div>
+    <div class="ptf-card"><div class="ptf-card-label">Plus-Value Totale</div><div class="ptf-card-val" style="color:${totalPV>=0?'var(--green)':'var(--red)'}">${totalPV>=0?'+':''}${fmt(totalPV)} FCFA</div></div>
+    <div class="ptf-card"><div class="ptf-card-label">Performance</div><div class="ptf-card-val" style="color:${totalPct>=0?'var(--green)':'var(--red)'}">${fmtPct(totalPct)}</div></div>
+  </div>`;
+
+  if (!portefeuille.length) {
+    html += `<div class="no-data" style="padding:60px">
+      <div style="font-size:40px;margin-bottom:12px">💼</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px">Portefeuille vide</div>
+      <div style="color:var(--text2)">Cliquez sur "Ajouter une position" pour enregistrer vos titres</div>
+    </div>`;
+  } else {
+    portefeuille.forEach(p => {
+      const d = getDernierCours(p.ticker);
+      const coursCourant = d ? d.cloture : null;
+      const investi = p.prixAchat * p.qte;
+      const valeur = coursCourant ? coursCourant * p.qte : null;
+      const pv = valeur !== null ? valeur - investi : null;
+      const pvPct = pv !== null ? (pv / investi) * 100 : null;
+
+      const targetPct = p.target || settings.target;
+      const stopPct = p.stop || settings.stop;
+      const prixTarget = p.prixAchat * (1 + targetPct/100);
+      const prixStop = p.prixAchat * (1 - stopPct/100);
+
+      // Barre progression
+      let progress = 50; // milieu par defaut
+      let progressColor = 'var(--text2)';
+      if (coursCourant) {
+        const range = prixTarget - prixStop;
+        progress = Math.min(100, Math.max(0, ((coursCourant - prixStop) / range) * 100));
+        progressColor = progress > 70 ? 'var(--green)' : progress < 30 ? 'var(--red)' : 'var(--accent2)';
+      }
+
+      // Alertes
+      let alertes = '';
+      if (coursCourant) {
+        if (coursCourant >= prixTarget) alertes += `<div class="alert-badge alert-target-badge">🎯 Objectif atteint ! Envisager de vendre</div>`;
+        else if (coursCourant <= prixStop) alertes += `<div class="alert-badge alert-stop-badge">🛑 Stop-loss declenche — Proteger le capital</div>`;
+        else if (pvPct !== null && pvPct > targetPct * 0.75) alertes += `<div class="alert-badge alert-warn-badge">⚠️ Proche de l'objectif — Surveiller</div>`;
+      }
+
+      const phase = getPhaseWyckoff(p.ticker);
+      const w = WYCKOFF[phase];
+      const m1 = getMomentum(p.ticker,1);
+      const m2 = getMomentum(p.ticker,2);
+      const m4 = getMomentum(p.ticker,4);
+
+      const cardClass = coursCourant && coursCourant >= prixTarget ? 'alert-target' : coursCourant && coursCourant <= prixStop ? 'alert-stop' : '';
+
+      html += `<div class="pos-card ${cardClass}">
+        <div class="pos-header">
+          <div>
+            <div class="pos-name">${p.nom || p.ticker}</div>
+            <div class="pos-ticker">${p.ticker} — ${p.qte} action${p.qte>1?'s':''} — achat le ${p.date||'—'}</div>
+          </div>
+          <div>
+            <div class="pos-pv" style="color:${pv===null?'var(--text2)':pv>=0?'var(--green)':'var(--red)'}">${pv!==null?(pv>=0?'+':'')+fmt(pv)+' FCFA':'—'}</div>
+            <div class="pos-pv-pct" style="color:${pvPct===null?'var(--text2)':pvPct>=0?'var(--green)':'var(--red)'};text-align:right">${pvPct!==null?fmtPct(pvPct):'—'}</div>
+          </div>
+        </div>
+        <div class="pos-details">
+          <div class="pos-detail-item"><div class="pos-detail-label">Prix achat</div><div class="pos-detail-val">${fmt(p.prixAchat)} FCFA</div></div>
+          <div class="pos-detail-item"><div class="pos-detail-label">Cours actuel</div><div class="pos-detail-val">${coursCourant?fmt(coursCourant)+' FCFA':'—'}</div></div>
+          <div class="pos-detail-item"><div class="pos-detail-label">Total investi</div><div class="pos-detail-val">${fmt(investi)} FCFA</div></div>
+          <div class="pos-detail-item"><div class="pos-detail-label">Stop -${stopPct}%</div><div class="pos-detail-val" style="color:var(--red)">${fmt(prixStop)} FCFA</div></div>
+          <div class="pos-detail-item"><div class="pos-detail-label">Target +${targetPct}%</div><div class="pos-detail-val" style="color:var(--green)">${fmt(prixTarget)} FCFA</div></div>
+          <div class="pos-detail-item"><div class="pos-detail-label">Phase Wyckoff</div><div class="pos-detail-val" style="color:${w.color}">${w.icon} ${phase}</div></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-labels"><span style="color:var(--red)">Stop ${fmt(prixStop)}</span><span style="color:var(--green)">Target ${fmt(prixTarget)}</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${progress}%;background:${progressColor}"></div></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          ${m1!==null?`<span class="opp-mom" style="font-size:10px;background:${m1>0?'rgba(16,185,129,0.2)':'rgba(239,68,68,0.2)'};color:${m1>0?'var(--green)':'var(--red)'};padding:2px 8px;border-radius:4px;font-weight:700;font-family:Space Mono,monospace">${fmtPct(m1)} 1s</span>`:''}
+          ${m2!==null?`<span class="opp-mom" style="font-size:10px;background:${m2>0?'rgba(16,185,129,0.2)':'rgba(239,68,68,0.2)'};color:${m2>0?'var(--green)':'var(--red)'};padding:2px 8px;border-radius:4px;font-weight:700;font-family:Space Mono,monospace">${fmtPct(m2)} 2s</span>`:''}
+          ${m4!==null?`<span class="opp-mom" style="font-size:10px;background:${m4>0?'rgba(16,185,129,0.2)':'rgba(239,68,68,0.2)'};color:${m4>0?'var(--green)':'var(--red)'};padding:2px 8px;border-radius:4px;font-weight:700;font-family:Space Mono,monospace">${fmtPct(m4)} 4s</span>`:''}
+        </div>
+        ${alertes}
+        <div style="text-align:right;margin-top:10px">
+          <button onclick="supprimerPosition('${p.id}')" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer">🗑 Supprimer</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  el.innerHTML = html;
+}
+
+function ouvrirModalPosition() {
+  // Remplir le select avec les 47 actions
+  const sel = document.getElementById('ptfTicker');
+  sel.innerHTML = BRVM_ACTIONS.map(a => `<option value="${a.s}">${a.s} — ${a.n}</option>`).join('');
+  document.getElementById('ptfQte').value = '';
+  document.getElementById('ptfPrix').value = '';
+  document.getElementById('ptfDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ptfTarget').value = settings.target;
+  document.getElementById('ptfStop').value = settings.stop;
+  document.getElementById('modalPosition').classList.add('open');
+}
+
+function sauvegarderPosition() {
+  const ticker = document.getElementById('ptfTicker').value;
+  const qte = parseInt(document.getElementById('ptfQte').value);
+  const prix = parseFloat(document.getElementById('ptfPrix').value);
+  const date = document.getElementById('ptfDate').value;
+  const target = parseFloat(document.getElementById('ptfTarget').value) || settings.target;
+  const stop = parseFloat(document.getElementById('ptfStop').value) || settings.stop;
+
+  if (!ticker || !qte || !prix || qte <= 0 || prix <= 0) {
+    toast('Veuillez remplir tous les champs', true); return;
+  }
+
+  const action = BRVM_ACTIONS.find(a => a.s === ticker);
+  portefeuille.push({
+    id: Date.now().toString(),
+    ticker, qte, prixAchat: prix, date,
+    nom: action ? action.n : ticker,
+    target, stop
+  });
+  DB.set('brvm_portefeuille', portefeuille);
+  fermerModal('modalPosition');
+  toast('Position enregistree');
+  renderPortefeuille();
+}
+
+function supprimerPosition(id) {
+  if (!confirm('Supprimer cette position ?')) return;
+  portefeuille = portefeuille.filter(p => p.id !== id);
+  DB.set('brvm_portefeuille', portefeuille);
+  renderPortefeuille();
+}
+
+// ═══════════════════════════════════════
+// RENDER GERER
+// ═══════════════════════════════════════
+function renderGerer() {
+  const el = document.getElementById('tab-gerer');
+  const lastUpdate = DB.get('brvm_lastUpdate', null);
+  const nbHistorique = Object.keys(historique).length;
+
+  el.innerHTML = `
+  <div class="gerer-section">
+    <div class="gerer-title">⚙️ Parametres par defaut</div>
+    <div class="settings-grid">
+      <div class="form-group">
+        <label>Objectif de gain par defaut (%)</label>
+        <input type="number" id="setTarget" value="${settings.target}" min="5" max="200">
+      </div>
+      <div class="form-group">
+        <label>Stop-loss par defaut (%)</label>
+        <input type="number" id="setStop" value="${settings.stop}" min="2" max="50">
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <button class="btn-primary" onclick="sauvegarderSettings()">✅ Enregistrer les parametres</button>
+    </div>
+  </div>
+
+  <div class="gerer-section">
+    <div class="gerer-title">💾 Sauvegarde des donnees</div>
+    <div style="color:var(--text2);font-size:13px;margin-bottom:12px">
+      Derniere mise a jour : <strong>${lastUpdate ? new Date(lastUpdate).toLocaleString('fr-FR') : 'Jamais'}</strong><br>
+      Actions avec historique : <strong>${nbHistorique}</strong> / 47
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-success" onclick="exporterDonnees()">📥 Exporter en JSON</button>
+      <label class="btn-secondary" style="cursor:pointer">📤 Importer JSON <input type="file" accept=".json" style="display:none" onchange="importerDonnees(this)"></label>
+    </div>
+  </div>
+
+  <div class="gerer-section">
+    <div class="gerer-title">🗑 Reinitialisation</div>
+    <div style="color:var(--text2);font-size:13px;margin-bottom:12px">Attention — ces actions sont irreversibles.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-danger" onclick="effacerHistorique()">Effacer l'historique des cours</button>
+      <button class="btn-danger" onclick="effacerPortefeuille()">Effacer le portefeuille</button>
+    </div>
+  </div>`;
+}
+
+function sauvegarderSettings() {
+  settings.target = parseFloat(document.getElementById('setTarget').value) || 35;
+  settings.stop = parseFloat(document.getElementById('setStop').value) || 10;
+  DB.set('brvm_settings', settings);
+  toast('Parametres enregistres');
+}
+
+function exporterDonnees() {
+  const data = {
+    version: 3,
+    exportedAt: new Date().toISOString(),
+    historique,
+    portefeuille,
+    settings
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'BRVM_sauvegarde_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Sauvegarde exportee');
+}
+
+function importerDonnees(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.historique) { historique = data.historique; DB.set('brvm_historique', historique); }
+      if (data.portefeuille) { portefeuille = data.portefeuille; DB.set('brvm_portefeuille', portefeuille); }
+      if (data.settings) { settings = data.settings; DB.set('brvm_settings', settings); }
+      toast('Donnees importees avec succes');
+      render('gerer');
+    } catch(err) {
+      toast('Fichier invalide', true);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function effacerHistorique() {
+  if (!confirm('Effacer tout l\'historique des cours ?')) return;
+  historique = {};
+  DB.set('brvm_historique', historique);
+  toast('Historique efface');
+  render('marche');
+}
+
+function effacerPortefeuille() {
+  if (!confirm('Effacer tout le portefeuille ?')) return;
+  portefeuille = [];
+  DB.set('brvm_portefeuille', portefeuille);
+  toast('Portefeuille efface');
+  renderPortefeuille();
+}
+
+// ═══════════════════════════════════════
+// RENDER DISPATCH
+// ═══════════════════════════════════════
+function render(tab) {
+  if (tab==='marche') renderMarche();
+  else if (tab==='opportunites') renderOpportunites();
+  else if (tab==='portefeuille') renderPortefeuille();
+  else if (tab==='gerer') renderGerer();
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+const lastUpdate = DB.get('brvm_lastUpdate', null);
+if (lastUpdate) {
+  document.getElementById('dateBadge').textContent = new Date(lastUpdate).toLocaleDateString('fr-FR', {day:'2-digit',month:'short',year:'numeric'});
+}
+renderMarche();
+</script>
+</body>
+</html>
