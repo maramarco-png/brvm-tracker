@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRVM Tracker — Mara</title>
+<script>
+// Chargement PDF.js dynamique avec fallback
+(function(){
+  const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+  s.onload=function(){
+    window.pdfjsLib=window['pdfjs-dist/build/pdf']||window.pdfjsLib;
+    if(window.pdfjsLib){
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+      window._pdfJsReady=true;
+      console.log('PDF.js chargé avec succès');
+    }
+  };
+  s.onerror=function(){
+    // Fallback cdnjs
+    const s2=document.createElement('script');
+    s2.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s2.onload=function(){
+      if(window.pdfjsLib){
+        pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        window._pdfJsReady=true;
+      }
+    };
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s);
+})();
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+:root {
+  --bg:#0a0e1a;--bg2:#111827;--bg3:#1a2235;--border:#253554;
+  --accent:#00d4aa;--accent2:#f59e0b;--red:#ef4444;--green:#10b981;
+  --orange:#f97316;
+  --text:#f1f5f9;        /* plus blanc */
+  --text2:#cbd5e1;       /* plus lisible */
+  --text3:#94a3b8;       /* était trop sombre */
+  --card:#131c2e;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+.header{background:linear-gradient(135deg,#0a0e1a,#111827);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{font-size:18px;font-weight:800;letter-spacing:-0.5px;}
+.logo span{color:var(--accent);}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.date-badge{font-family:'Space Mono',monospace;font-size:11px;color:var(--text2);background:var(--bg3);padding:4px 10px;border-radius:20px;border:1px solid var(--border);}
+.btn-update{background:var(--accent);color:#000;border:none;padding:8px 16px;border-radius:8px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all .2s;}
+.btn-update:hover{background:#00f0c0;transform:translateY(-1px);}
+.nav{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+.nav::-webkit-scrollbar{display:none;}
+.nav-btn{padding:12px 20px;background:none;border:none;color:var(--text2);font-family:'Syne',sans-serif;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s;}
+.nav-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.nav-btn:hover{color:var(--text);}
+.main{padding:16px;max-width:1200px;margin:0 auto;}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--accent);color:#000;padding:10px 20px;border-radius:8px;font-weight:700;font-size:13px;z-index:999;transition:transform .3s;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.error{background:var(--red);color:#fff;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:620px;max-height:90vh;overflow-y:auto;}
+.modal h3{font-size:18px;font-weight:800;margin-bottom:8px;}
+.modal p{color:var(--text2);font-size:13px;margin-bottom:12px;line-height:1.5;}
+.modal textarea{width:100%;height:180px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;padding:12px;resize:vertical;}
+.modal-btns{display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;}
+.btn-primary{background:var(--accent);color:#000;border:none;padding:10px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer;}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:10px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-weight:600;font-size:13px;cursor:pointer;}
+
+/* SOURCE TABS */
+.source-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.source-tab{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-family:'Syne',sans-serif;font-weight:600;font-size:12px;cursor:pointer;transition:all .2s;}
+.source-tab.active{background:var(--accent);color:#000;border-color:var(--accent);}
+.source-panel{display:none;}
+.source-panel.active{display:block;}
+.date-input-wrap{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.date-input-wrap label{font-size:12px;color:var(--text2);font-weight:600;}
+.date-input-wrap input{background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Syne',sans-serif;font-size:14px;padding:10px 12px;}
+.date-input-wrap input:focus{outline:none;border-color:var(--accent);}
+.info-box{background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--accent);margin-bottom:12px;line-height:1.5;}
+.warn-box{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--accent2);margin-bottom:12px;line-height:1.5;}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.stat-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.stat-value{font-size:22px;font-weight:800;font-family:'Space Mono',monospace;}
+.stat-value.green{color:var(--green);}
+.stat-value.red{color:var(--red);}
+.stat-value.accent{color:var(--accent);}
+
+/* SEARCH */
+.search-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 16px;color:var(--text);font-family:'Syne',sans-serif;font-size:14px;width:100%;margin-bottom:12px;}
+.search-bar:focus{outline:none;border-color:var(--accent);}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;}
+thead th{background:var(--bg3);padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);text-align:left;white-space:nowrap;cursor:pointer;user-select:none;}
+thead th:hover{color:var(--accent);}
+tbody tr{border-top:1px solid var(--border);transition:background .15s;cursor:pointer;}
+tbody tr:hover{background:var(--bg3);}
+tbody td{padding:10px 14px;font-size:13px;white-space:nowrap;}
+.ticker-badge{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;background:var(--bg3);border:1px solid var(--border);padding:3px 8px;border-radius:4px;color:var(--accent);}
+.nom-cell{color:var(--text2);font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;}
+.cours-cell{font-family:'Space Mono',monospace;font-weight:700;}
+.var-cell{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;}
+.var-cell.pos{color:var(--green);}
+.var-cell.neg{color:var(--red);}
+.var-cell.neu{color:var(--text2);}
+.vol-badge{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;}
+.vol-normal{background:rgba(71,85,105,.3);color:var(--text2);}
+.vol-haut{background:rgba(245,158,11,.2);color:var(--accent2);}
+.vol-tres-haut{background:rgba(239,68,68,.2);color:var(--red);}
+.phase-badge{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:700;white-space:nowrap;}
+.mom-cell{font-family:'Space Mono',monospace;font-size:11px;}
+.mom-pos{color:var(--green);}
+.mom-neg{color:var(--red);}
+.mom-neu{color:var(--text3);}
+
+/* DETAIL PANEL */
+.detail-panel{display:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-top:12px;}
+.detail-panel.open{display:block;}
+.detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:10px;}
+.detail-title{font-size:18px;font-weight:800;}
+.detail-sub{color:var(--text2);font-size:13px;margin-top:2px;}
+.wyckoff-box{border-radius:10px;padding:16px;margin-bottom:16px;border:1px solid;}
+.wyckoff-label{font-size:15px;font-weight:800;margin-bottom:6px;}
+.wyckoff-what{font-size:13px;color:var(--text2);margin-bottom:8px;line-height:1.5;}
+.wyckoff-conseil{font-size:13px;font-weight:700;padding:8px 12px;border-radius:6px;background:rgba(0,0,0,.3);}
+
+/* MOMENTUM SLIDER */
+.mom-slider-wrap{margin-bottom:16px;}
+.mom-slider-label{font-size:12px;color:var(--text2);margin-bottom:8px;}
+.mom-slider{width:100%;accent-color:var(--accent);}
+.mom-grid{display:grid;gap:10px;margin-bottom:16px;}
+.mom-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;}
+.mom-card-label{font-size:11px;color:var(--text3);margin-bottom:4px;}
+.mom-card-val{font-size:18px;font-weight:800;font-family:'Space Mono',monospace;}
+.close-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;}
+.alert-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;margin-top:8px;}
+.alert-target-badge{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3);}
+.alert-stop-badge{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3);}
+.alert-warn-badge{background:rgba(245,158,11,.15);color:var(--accent2);border:1px solid rgba(245,158,11,.3);}
+
+/* PORTEFEUILLE */
+.ptf-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;}
+.ptf-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.ptf-card-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.ptf-card-val{font-size:18px;font-weight:800;font-family:'Space Mono',monospace;}
+.pos-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;transition:border-color .2s;}
+.pos-card.alert-target{border-color:var(--green);}
+.pos-card.alert-stop{border-color:var(--red);}
+.pos-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px;}
+.pos-name{font-size:15px;font-weight:700;}
+.pos-ticker{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent);}
+.pos-pv{font-family:'Space Mono',monospace;font-size:18px;font-weight:800;text-align:right;}
+.pos-pv-pct{font-size:12px;color:var(--text2);}
+.pos-details{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.pos-detail-item{font-size:11px;}
+.pos-detail-label{color:var(--text3);margin-bottom:2px;}
+.pos-detail-val{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;}
+.progress-wrap{margin-bottom:10px;}
+.progress-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px;}
+.progress-bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:3px;transition:width .5s;}
+
+/* OPPORTUNITES */
+.opp-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:border-color .2s;}
+.opp-card:hover{border-color:var(--accent);}
+.opp-rank{font-family:'Space Mono',monospace;font-size:24px;font-weight:700;color:var(--text3);min-width:36px;}
+.opp-rank.top{color:var(--accent);}
+.opp-info{flex:1;}
+.opp-name{font-size:14px;font-weight:700;}
+.opp-ticker{font-size:11px;color:var(--accent);font-family:'Space Mono',monospace;}
+.opp-moms{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+.opp-mom{font-size:11px;font-family:'Space Mono',monospace;padding:2px 8px;border-radius:4px;font-weight:700;}
+.opp-score-val{font-size:22px;font-weight:800;font-family:'Space Mono',monospace;}
+.opp-score-label{font-size:10px;color:var(--text3);}
+
+/* HISTORIQUE */
+.hist-controls{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;}
+.hist-select{background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Syne',sans-serif;font-size:14px;padding:10px 12px;width:100%;margin-bottom:12px;}
+.hist-select:focus{outline:none;border-color:var(--accent);}
+.weeks-slider-wrap{margin-bottom:8px;}
+.weeks-slider-label{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;}
+.weeks-slider{width:100%;accent-color:var(--accent);}
+.hist-table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;overflow-x:auto;}
+.chart-svg{display:block;}
+
+/* GERER */
+.gerer-section{margin-bottom:24px;}
+.gerer-title{font-size:16px;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group label{font-size:12px;color:var(--text2);font-weight:600;}
+.form-group input,.form-group select{background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Syne',sans-serif;font-size:14px;padding:10px 12px;}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent);}
+.form-full{grid-column:1/-1;}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3);padding:8px 16px;border-radius:8px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer;}
+.btn-success{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3);padding:8px 16px;border-radius:8px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer;}
+.no-data{text-align:center;padding:40px;color:var(--text3);font-size:14px;}
+
+/* SEMAINES PILLS */
+.weeks-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.weeks-pill{padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;}
+.weeks-pill.active{background:var(--accent);color:#000;border-color:var(--accent);}
+
+@media(max-width:600px){
+  .form-grid,.settings-grid{grid-template-columns:1fr;}
+  .pos-details{grid-template-columns:repeat(2,1fr);}
+  .header{padding:10px 12px;}
+  .main{padding:10px;}
+  tbody td{padding:8px 10px;}
+  .nom-cell{display:none;}
+  .opp-card{flex-wrap:wrap;}
+}
+
+/* SIGNAL COLONNE */
+.signal-badge{font-size:11px;font-weight:800;padding:4px 10px;border-radius:6px;white-space:nowrap;letter-spacing:0.3px;}
+.signal-acheter{background:rgba(16,185,129,0.2);color:#10b981;border:1px solid rgba(16,185,129,0.4);}
+.signal-vendre{background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid rgba(239,68,68,0.4);}
+.signal-attendre{background:rgba(100,116,139,0.2);color:#94a3b8;border:1px solid rgba(100,116,139,0.3);}
+.signal-surveiller{background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.4);}
+
+/* ALERTE CLIGNOTANTE */
+@keyframes pulse-green{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4);}50%{box-shadow:0 0 0 8px rgba(16,185,129,0);}}
+@keyframes pulse-red{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4);}50%{box-shadow:0 0 0 8px rgba(239,68,68,0);}}
+@keyframes pulse-orange{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.4);}50%{box-shadow:0 0 0 8px rgba(245,158,11,0);}}
+.pulse-green{animation:pulse-green 1.5s infinite;}
+.pulse-red{animation:pulse-red 1.5s infinite;}
+.pulse-orange{animation:pulse-orange 1.5s infinite;}
+.signal-fort{border-left:3px solid var(--green)!important;}
+.signal-fort-vente{border-left:3px solid var(--red)!important;}
+
+/* MULTI-PORTEFEUILLE */
+.ptf-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.ptf-tab{padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-family:'Syne',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:all .2s;}
+.ptf-tab.active{background:var(--accent);color:#000;border-color:var(--accent);}
+.ptf-tab:hover{color:var(--text);}
+.ptf-add-btn{padding:8px 14px;border-radius:8px;border:1px dashed var(--border);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;transition:all .2s;}
+.ptf-add-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* LISIBILITE GENERALE */
+.nom-cell{color:var(--text2)!important;}
+.stat-label{color:var(--text3)!important;font-size:11px;}
+.pos-detail-label{color:var(--text2)!important;}
+.mom-neu{color:var(--text2)!important;}
+tbody td{color:var(--text);}
+thead th{color:var(--text2);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">BRVM<span>.</span>tracker</div>
+  <div class="header-right">
+    <div class="date-badge" id="dateBadge">Aucune donnée</div>
+    <button class="btn-update" onclick="ouvrirModalColler()">📋 Mettre à jour</button>
+  </div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showTab('marche',this)">📊 Marché</button>
+  <button class="nav-btn" onclick="showTab('opportunites',this)">🎯 Opportunités</button>
+  <button class="nav-btn" onclick="showTab('portefeuilles',this)">💼 Portefeuilles</button>
+  <button class="nav-btn" onclick="showTab('historique',this)">📅 Historique</button>
+  <button class="nav-btn" onclick="showTab('gerer',this)">⚙️ Gérer</button>
+</nav>
+
+<div class="main">
+  <div id="tab-marche"></div>
+  <div id="tab-opportunites" style="display:none"></div>
+  <div id="tab-portefeuilles" style="display:none"></div>
+  <div id="tab-historique" style="display:none"></div>
+  <div id="tab-gerer" style="display:none"></div>
+</div>
+
+<!-- MODAL MISE A JOUR -->
+<div class="modal-overlay" id="modalColler">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0">📋 Mettre à jour les cours</h3>
+      <button onclick="fermerModal('modalColler')" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:700">✕ Fermer</button>
+    </div>
+    <p>Choisissez votre source de données :</p>
+    <div class="source-tabs">
+      <button class="source-tab active" onclick="switchSource('excel',this)">📊 Excel (temps réel)</button>
+      <button class="source-tab" onclick="switchSource('boc',this)">📄 BOC du jour</button>
+      <button class="source-tab" onclick="switchSource('bocold',this)">🕐 Ancien BOC (historique)</button>
+    </div>
+
+    <!-- EXCEL -->
+    <div class="source-panel active" id="panel-excel">
+      <div class="info-box">✅ <strong>Source principale</strong> — Utilisez ceci plusieurs fois par jour. La date est automatiquement celle d'aujourd'hui.<br><br>Dans Excel : sélectionnez toutes les colonnes (Symbole, Nom, Volume, Cours veille, Cours Ouverture, Cours Clôture, Variation) → Ctrl+C</div>
+      <textarea id="texteExcel" placeholder="Collez ici votre tableau Excel (Ctrl+V)..."></textarea>
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="fermerModal('modalColler')">Annuler</button>
+        <button class="btn-primary" onclick="importerCours('excel')">✅ Importer</button>
+      </div>
+    </div>
+
+    <!-- BOC DU JOUR -->
+    <div class="source-panel" id="panel-boc">
+      <div class="info-box">📄 <strong>BOC du jour</strong> — Téléchargez le PDF depuis brvm.org et sélectionnez-le ici. L'application extrait automatiquement les cours et la date.</div>
+      <div id="bocDropZone" style="border:2px dashed var(--border);border-radius:10px;padding:30px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:12px;" onclick="document.getElementById('bocPdfInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handlePdfDrop(event,'boc')">
+        <div style="font-size:32px;margin-bottom:8px">📄</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)">Cliquez ou glissez le PDF ici</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">Fichier PDF du BOC brvm.org</div>
+        <input type="file" id="bocPdfInput" accept=".pdf" style="display:none" onchange="lirePdf(this,'boc')">
+      </div>
+      <div id="bocPdfStatus" style="display:none;border-radius:8px;padding:12px 14px;margin-bottom:12px;"></div>
+      <div id="dateDetecteeBoc" style="display:none;margin-bottom:12px;border-radius:8px;padding:12px 14px;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.2);">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">📅 Date détectée dans le BOC :</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span id="dateBocLabel" style="font-size:15px;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace"></span>
+          <span style="font-size:12px;color:var(--text2)">— Correct ?</span>
+          <input type="date" id="dateBocCorrection" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:4px 8px;">
+        </div>
+      </div>
+      <div id="dateBocManuelle" style="display:none;margin-bottom:12px;">
+        <div class="date-input-wrap">
+          <label>Date non détectée — entrez-la manuellement</label>
+          <input type="date" id="dateBocManuelleInput" max="">
+        </div>
+      </div>
+      <textarea id="texteBoc" style="display:none"></textarea>
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="fermerModal('modalColler')">Annuler</button>
+        <button class="btn-primary" id="btnImportBoc" style="display:none" onclick="importerCours('boc')">✅ Importer</button>
+      </div>
+    </div>
+
+    <!-- ANCIEN BOC -->
+    <div class="source-panel" id="panel-bocold">
+      <div class="warn-box">🕐 <strong>Reconstitution historique</strong> — Téléchargez un ancien BOC en PDF. L'application extrait les cours et détecte la date automatiquement. Jusqu'à 52 semaines en arrière.</div>
+      <div id="bocOldDropZone" style="border:2px dashed var(--border);border-radius:10px;padding:30px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:12px;" onclick="document.getElementById('bocOldPdfInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent2)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handlePdfDrop(event,'bocold')">
+        <div style="font-size:32px;margin-bottom:8px">🕐</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)">Cliquez ou glissez l'ancien BOC ici</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">Fichier PDF d'un ancien BOC</div>
+        <input type="file" id="bocOldPdfInput" accept=".pdf" style="display:none" onchange="lirePdf(this,'bocold')">
+      </div>
+      <div id="bocOldPdfStatus" style="display:none;border-radius:8px;padding:12px 14px;margin-bottom:12px;"></div>
+      <div id="dateDetecteeAncien" style="display:none;margin-bottom:12px;border-radius:8px;padding:12px 14px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">📅 Date détectée dans le BOC :</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span id="dateAncienLabel" style="font-size:15px;font-weight:700;color:var(--accent2);font-family:'Space Mono',monospace"></span>
+          <span style="font-size:12px;color:var(--text2)">— Correct ?</span>
+          <input type="date" id="dateAncienCorrection" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:4px 8px;">
+        </div>
+      </div>
+      <div id="dateAncienManuelle" style="display:none;margin-bottom:12px;">
+        <div class="date-input-wrap">
+          <label>Date non détectée — entrez-la manuellement</label>
+          <input type="date" id="dateAncienBoc" max="">
+        </div>
+      </div>
+      <textarea id="texteAncienBoc" style="display:none"></textarea>
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="fermerModal('modalColler')">Annuler</button>
+        <button class="btn-primary" id="btnImportBocOld" style="display:none" onclick="importerCours('bocold')">✅ Enregistrer dans l'historique</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL POSITION -->
+<div class="modal-overlay" id="modalPosition">
+  <div class="modal">
+    <h3>➕ Ajouter une position</h3>
+    <p>Entrez les détails de votre achat. Le prix doit inclure toutes les taxes et frais.</p>
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>Action</label>
+        <select id="ptfTicker"></select>
+      </div>
+      <div class="form-group">
+        <label>Quantité achetée</label>
+        <input type="number" id="ptfQte" placeholder="ex: 5" min="1">
+      </div>
+      <div class="form-group">
+        <label>Prix achat tout compris (FCFA)</label>
+        <input type="number" id="ptfPrix" placeholder="ex: 8950">
+      </div>
+      <div class="form-group">
+        <label>Date achat</label>
+        <input type="date" id="ptfDate">
+      </div>
+      <div class="form-group">
+        <label>Target (%)</label>
+        <input type="number" id="ptfTarget" placeholder="35">
+      </div>
+      <div class="form-group">
+        <label>Stop-loss (%)</label>
+        <input type="number" id="ptfStop" placeholder="10">
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="fermerModal('modalPosition')">Annuler</button>
+      <button class="btn-primary" onclick="sauvegarderPosition()">✅ Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BRVM_ACTIONS=[
+  {s:"ABJC",n:"SERVAIR ABIDJAN"},{s:"BICB",n:"BANQUE INTERNATIONALE POUR L'INDUSTRIE ET LE COMMERCE DU BENIN"},
+  {s:"BICC",n:"BICI COTE D'IVOIRE"},{s:"BNBC",n:"BERNABE COTE D'IVOIRE"},
+  {s:"BOAB",n:"BANK OF AFRICA BENIN"},{s:"BOABF",n:"BANK OF AFRICA BURKINA FASO"},
+  {s:"BOAC",n:"BANK OF AFRICA COTE D'IVOIRE"},{s:"BOAM",n:"BANK OF AFRICA MALI"},
+  {s:"BOAN",n:"BANK OF AFRICA NIGER"},{s:"BOAS",n:"BANK OF AFRICA SENEGAL"},
+  {s:"CABC",n:"SICABLE COTE D'IVOIRE"},{s:"CBIBF",n:"CORIS BANK INTERNATIONAL BURKINA FASO"},
+  {s:"CFAC",n:"CFAO MOTORS COTE D'IVOIRE"},{s:"CIEC",n:"CIE COTE D'IVOIRE"},
+  {s:"ECOC",n:"ECOBANK COTE D'IVOIRE"},{s:"ETIT",n:"ECOBANK TRANSNATIONAL INCORPORATED TOGO"},
+  {s:"FTSC",n:"FILTISAC COTE D'IVOIRE"},{s:"LNBB",n:"LOTERIE NATIONALE DU BENIN"},
+  {s:"NEIC",n:"NEI-CEDA COTE D'IVOIRE"},{s:"NSBC",n:"NSIA BANQUE COTE D'IVOIRE"},
+  {s:"NTLC",n:"NESTLE COTE D'IVOIRE"},{s:"ONTBF",n:"ONATEL BURKINA FASO"},
+  {s:"ORAC",n:"ORANGE COTE D'IVOIRE"},{s:"ORGT",n:"ORAGROUP TOGO"},
+  {s:"PALC",n:"PALM COTE D'IVOIRE"},{s:"PRSC",n:"TRACTAFRIC MOTORS COTE D'IVOIRE"},
+  {s:"SAFC",n:"SAFCA COTE D'IVOIRE"},{s:"SCRC",n:"SUCRIVOIRE COTE D'IVOIRE"},
+  {s:"SDCC",n:"SODE COTE D'IVOIRE"},{s:"SDSC",n:"AFRICA GLOBAL LOGISTICS COTE D'IVOIRE"},
+  {s:"SEMC",n:"EVIOSYS PACKAGING SIEM COTE D'IVOIRE"},{s:"SGBC",n:"SOCIETE GENERALE COTE D'IVOIRE"},
+  {s:"SHEC",n:"VIVO ENERGY COTE D'IVOIRE"},{s:"SIBC",n:"SOCIETE IVOIRIENNE DE BANQUE COTE D'IVOIRE"},
+  {s:"SICC",n:"SICOR COTE D'IVOIRE"},{s:"SIVC",n:"ERIUM COTE D'IVOIRE"},
+  {s:"SLBC",n:"SOLIBRA COTE D'IVOIRE"},{s:"SMBC",n:"SMB COTE D'IVOIRE"},
+  {s:"SNTS",n:"SONATEL SENEGAL"},{s:"SOGC",n:"SOGB COTE D'IVOIRE"},
+  {s:"SPHC",n:"SAPH COTE D'IVOIRE"},{s:"STAC",n:"SETAO COTE D'IVOIRE"},
+  {s:"STBC",n:"SITAB COTE D'IVOIRE"},{s:"TTLC",n:"TOTALENERGIES MARKETING COTE D'IVOIRE"},
+  {s:"TTLS",n:"TOTALENERGIES MARKETING SENEGAL"},{s:"UNLC",n:"UNILEVER COTE D'IVOIRE"},
+  {s:"UNXC",n:"UNIWAX COTE D'IVOIRE"}
+];
+
+const WYCKOFF={
+  Accumulation:{icon:"🟡",color:"#F59E0B",bg:"rgba(245,158,11,0.1)",border:"rgba(245,158,11,0.3)",
+    label:"Accumulation",
+    what:"Les grands investisseurs achtent discretement. Le cours bouge peu mais les volumes augmentent.",
+    attitude:"Bon point d'entree progressif. Ne pas tout mettre en une seule fois.",
+    conseil:"ENTRER progressivement"},
+  Hausse:{icon:"📈",color:"#10B981",bg:"rgba(16,185,129,0.1)",border:"rgba(16,185,129,0.3)",
+    label:"Hausse (Markup)",
+    what:"Le cours monte franchement soutenu par des volumes croissants.",
+    attitude:"Conserver si vous etes en position. Renforcer sur les corrections. Remonter le stop.",
+    conseil:"CONSERVER et remonter le stop"},
+  Distribution:{icon:"⚠️",color:"#F97316",bg:"rgba(249,115,22,0.1)",border:"rgba(249,115,22,0.3)",
+    label:"Distribution",
+    what:"Le cours plafonne malgre des volumes eleves. Les gros investisseurs revendent.",
+    attitude:"Signal de sortie partielle ou totale. Remonter votre stop au plus pres.",
+    conseil:"SORTIR partiellement ou totalement"},
+  Baisse:{icon:"📉",color:"#EF4444",bg:"rgba(239,68,68,0.1)",border:"rgba(239,68,68,0.3)",
+    label:"Baisse (Markdown)",
+    what:"Le cours chute, les vendeurs dominent. Le mouvement peut s'accelerer.",
+    attitude:"Ne pas acheter parce que c'est moins cher. Attendre une stabilisation.",
+    conseil:"NE PAS ACHETER"},
+  Consolidation:{icon:"⏸️",color:"#64748B",bg:"rgba(100,116,139,0.1)",border:"rgba(100,116,139,0.3)",
+    label:"Consolidation",
+    what:"Indecision entre acheteurs et vendeurs. Pas de direction claire.",
+    attitude:"Attendre un signal clair — cassure a la hausse avec volume.",
+    conseil:"ATTENDRE un signal clair"}
+};
+
+const DB={
+  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+};
+
+let historique=DB.get('brvm_hist4',{});
+let settings=DB.get('brvm_set4',{target:35,stop:10});
+let sortCol='var';let sortDir=-1;
+let searchQ='';let activeRow=null;
+let detailWeeks=[1,2,4];
+let histTicker='';let histWeeks=12;
+
+// ═══ MULTI-PORTEFEUILLE ═══
+// Structure: [{id, nom, target, stop, positions:[]}]
+let portfolios=DB.get('brvm_portfolios',[]);
+let activePtfId=DB.get('brvm_activePtf',null);
+
+// Migration: si ancien format existe, le convertir
+(function migrer(){
+  const old=DB.get('brvm_ptf4',null);
+  if(old&&old.length&&!portfolios.length){
+    portfolios=[{id:'ptf_1',nom:'Mon Portefeuille',target:35,stop:10,positions:old}];
+    activePtfId='ptf_1';
+    DB.set('brvm_portfolios',portfolios);
+    DB.set('brvm_activePtf',activePtfId);
+  }
+  if(!portfolios.length){
+    portfolios=[{id:'ptf_1',nom:'Portefeuille A',target:35,stop:10,positions:[]}];
+    activePtfId='ptf_1';
+    DB.set('brvm_portfolios',portfolios);
+    DB.set('brvm_activePtf',activePtfId);
+  }
+  if(!activePtfId||!portfolios.find(p=>p.id===activePtfId)){
+    activePtfId=portfolios[0].id;
+    DB.set('brvm_activePtf',activePtfId);
+  }
+})();
+
+function getPtfActif(){return portfolios.find(p=>p.id===activePtfId)||portfolios[0];}
+function savePtf(){DB.set('brvm_portfolios',portfolios);DB.set('brvm_activePtf',activePtfId);}
+
+function fmt(n){if(n===null||n===undefined||isNaN(n))return'—';return Math.round(n).toLocaleString('fr-FR');}
+function fmtPct(n){if(n===null||n===undefined||isNaN(n))return'—';return(n>=0?'+':'')+n.toFixed(2)+'%';}
+function toast(msg,err=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show'+(err?' error':'');
+  setTimeout(()=>t.className='toast',3000);
+}
+function showTab(name,btn){
+  ['marche','opportunites','portefeuilles','historique','gerer'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===name?'':'none';
+  });
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  render(name);
+}
+function ouvrirModalColler(){
+  document.getElementById('dateAncienBoc').max=new Date().toISOString().slice(0,10);
+  document.getElementById('modalColler').classList.add('open');
+}
+function fermerModal(id){document.getElementById(id).classList.remove('open');}
+function switchSource(src,btn){
+  document.querySelectorAll('.source-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.source-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+src).classList.add('active');
+}
+
+// ═══ LECTURE PDF BOC — PDF.js ═══
+function handlePdfDrop(event, mode){
+  event.preventDefault();
+  const file=event.dataTransfer.files[0];
+  if(file&&file.type==='application/pdf') traiterPdf(file,mode);
+  else toast('Veuillez déposer un fichier PDF',true);
+}
+
+function lirePdf(input, mode){
+  const file=input.files[0];
+  if(file) traiterPdf(file,mode);
+}
+
+async function traiterPdf(file, mode){
+  const statusId=mode==='boc'?'bocPdfStatus':'bocOldPdfStatus';
+  const btnId=mode==='boc'?'btnImportBoc':'btnImportBocOld';
+  const status=document.getElementById(statusId);
+  status.style.display='block';
+  status.style.background='rgba(0,212,170,0.08)';
+  status.style.border='1px solid rgba(0,212,170,0.2)';
+  status.style.color='var(--accent)';
+  status.textContent='⏳ Lecture du PDF en cours...';
+
+  try {
+    // Attendre que PDF.js soit chargé (max 5 secondes)
+    let waited=0;
+    while(!window.pdfjsLib&&waited<50){
+      await new Promise(r=>setTimeout(r,100));
+      waited++;
+    }
+    if(!window.pdfjsLib){
+      throw new Error('PDF.js ne se charge pas — vérifiez votre connexion internet');
+    }
+
+    const arrayBuffer=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+    let fullText='';
+
+    // Lire toutes les pages
+    for(let p=1;p<=pdf.numPages;p++){
+      const page=await pdf.getPage(p);
+      const pageContent=await page.getTextContent();
+      // Reconstituer le texte en groupant par ligne (meme Y)
+      const items=pageContent.items;
+      // Trier par Y décroissant (haut vers bas) puis X croissant
+      const sorted=[...items].sort((a,b)=>{
+        const dy=b.transform[5]-a.transform[5];
+        if(Math.abs(dy)>3)return dy;
+        return a.transform[4]-b.transform[4];
+      });
+      let pageText='';
+      let lastY=null;
+      for(const item of sorted){
+        const y=Math.round(item.transform[5]);
+        if(lastY!==null&&Math.abs(y-lastY)>3){
+          pageText+='\n';
+        }
+        pageText+=item.str+' ';
+        lastY=y;
+      }
+      fullText+=pageText+'\n';
+    }
+
+    // Stocker le texte extrait
+    document.getElementById(mode==='boc'?'texteBoc':'texteAncienBoc').value=fullText;
+
+    // Parser les cours
+    const entrees=parseLignes(fullText,'boc');
+    const nb=entrees.length;
+
+    if(nb===0){
+      status.style.background='rgba(239,68,68,0.08)';
+      status.style.border='1px solid rgba(239,68,68,0.2)';
+      status.style.color='var(--red)';
+      status.textContent='❌ PDF lu mais aucune action reconnue. Vérifiez le fichier.';
+      document.getElementById(btnId).style.display='block';
+      return;
+    }
+
+    status.textContent='✅ PDF lu — '+nb+' action'+(nb>1?'s':'')+' reconnue'+(nb>1?'s':'')+' sur 47';
+
+    // Détecter la date
+    const date=extraireDateBoc(fullText);
+    const today=new Date().toISOString().slice(0,10);
+    if(mode==='boc'){
+      if(date){
+        document.getElementById('dateBocLabel').textContent=new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+        document.getElementById('dateBocCorrection').value=date;
+        document.getElementById('dateBocCorrection').max=today;
+        document.getElementById('dateDetecteeBoc').style.display='block';
+      } else {
+        document.getElementById('dateBocManuelle').style.display='block';
+        document.getElementById('dateBocManuelleInput').max=today;
+      }
+    } else {
+      if(date){
+        document.getElementById('dateAncienLabel').textContent=new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+        document.getElementById('dateAncienCorrection').value=date;
+        document.getElementById('dateAncienCorrection').max=today;
+        document.getElementById('dateDetecteeAncien').style.display='block';
+      } else {
+        document.getElementById('dateAncienManuelle').style.display='block';
+        document.getElementById('dateAncienBoc').max=today;
+      }
+    }
+    document.getElementById(btnId).style.display='block';
+
+  } catch(err){
+    console.error('Erreur PDF:', err);
+    status.style.background='rgba(239,68,68,0.08)';
+    status.style.border='1px solid rgba(239,68,68,0.2)';
+    status.style.color='var(--red)';
+    status.textContent='❌ Erreur: '+err.message;
+    document.getElementById(btnId).style.display='block';
+  }
+}
+
+// ═══ DETECTION DATE BOC ═══
+const MOIS_FR={
+  'janvier':'01','fevrier':'02','mars':'03','avril':'04','mai':'05','juin':'06',
+  'juillet':'07','aout':'08','septembre':'09','octobre':'10','novembre':'11','decembre':'12',
+  'janv':'01','fevr':'02','avr':'04','juil':'07','aou':'08','sept':'09','oct':'10','nov':'11','dec':'12'
+};
+
+function extraireDateBoc(txt){
+  // Nettoyer les accents pour simplifier la regex
+  const t=txt.toLowerCase()
+    .replace(/é|è|ê/g,'e').replace(/à|â/g,'a').replace(/û/g,'u').replace(/î/g,'i');
+
+  // Format : "seance du lundi 12 mai 2026" ou "bulletin officiel de la cote du 12/05/2026"
+  // Format numérique : 12/05/2026 ou 12-05-2026
+  const regexNum=/\b(\d{1,2})[\/\-](\d{2})[\/\-](\d{4})\b/;
+  const regexFr=/\b(\d{1,2})\s+(janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre|janv|fevr|avr|juil|aou|sept|oct|nov|dec)\s+(\d{4})\b/;
+
+  let m=t.match(regexFr);
+  if(m){
+    const j=m[1].padStart(2,'0');
+    const mo=MOIS_FR[m[2]]||'01';
+    const a=m[3];
+    if(parseInt(a)>=2020&&parseInt(a)<=2030)return`${a}-${mo}-${j}`;
+  }
+  m=t.match(regexNum);
+  if(m){
+    const j=m[1].padStart(2,'0');
+    const mo=m[2];
+    const a=m[3];
+    if(parseInt(a)>=2020&&parseInt(a)<=2030)return`${a}-${mo}-${j}`;
+  }
+  return null;
+}
+
+function detecterDateBoc(mode){
+  const txt=mode==='boc'
+    ?document.getElementById('texteBoc').value
+    :document.getElementById('texteAncienBoc').value;
+
+  const date=extraireDateBoc(txt);
+  const today=new Date().toISOString().slice(0,10);
+
+  if(mode==='boc'){
+    const box=document.getElementById('dateDetecteeBoc');
+    const manuel=document.getElementById('dateBocManuelle');
+    if(date){
+      document.getElementById('dateBocLabel').textContent=
+        new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+      document.getElementById('dateBocCorrection').value=date;
+      document.getElementById('dateBocCorrection').max=today;
+      box.style.display='block';
+      manuel.style.display='none';
+    } else if(txt.length>50){
+      box.style.display='none';
+      manuel.style.display='block';
+      document.getElementById('dateBocManuelleInput').max=today;
+    }
+  } else {
+    const box=document.getElementById('dateDetecteeAncien');
+    const manuel=document.getElementById('dateAncienManuelle');
+    if(date){
+      document.getElementById('dateAncienLabel').textContent=
+        new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+      document.getElementById('dateAncienCorrection').value=date;
+      document.getElementById('dateAncienCorrection').max=today;
+      box.style.display='block';
+      manuel.style.display='none';
+    } else if(txt.length>50){
+      box.style.display='none';
+      manuel.style.display='block';
+      document.getElementById('dateAncienBoc').max=today;
+    }
+  }
+}
+
+function getDateBoc(mode){
+  if(mode==='boc'){
+    const corr=document.getElementById('dateBocCorrection').value;
+    const manuel=document.getElementById('dateBocManuelleInput').value;
+    return corr||manuel||new Date().toISOString().slice(0,10);
+  } else {
+    const corr=document.getElementById('dateAncienCorrection').value;
+    const manuel=document.getElementById('dateAncienBoc').value;
+    return corr||manuel||null;
+  }
+}
+
+// ═══ IMPORT ═══
+const SECTEURS_BOC=['CB','CD','ENE','FIN','IND','SPU','TEL'];
+
+function parseNum(s){
+  if(!s)return null;
+  const n=parseFloat(s.replace(/[\s\u00a0]/g,'').replace(',','.'));
+  return isNaN(n)?null:n;
+}
+
+function parseLignesExcel(txt){
+  const lignes=txt.split('\n').filter(l=>l.trim());
+  const result=[];
+  lignes.forEach(ligne=>{
+    const cols=ligne.split('\t').map(c=>c.trim());
+    if(cols.length<2)return;
+    const ticker=cols[0].toUpperCase().trim();
+    const action=BRVM_ACTIONS.find(a=>a.s===ticker);
+    if(!action)return;
+    let cloture=null,volume=0,variation=null;
+    if(cols.length>=7){
+      volume=parseNum(cols[2])||0;
+      cloture=parseNum(cols[5]);
+      variation=parseNum(cols[6]);
+    } else if(cols.length>=3){
+      cloture=parseNum(cols[1]);
+      variation=parseNum(cols[2]);
+    } else {
+      cloture=parseNum(cols[1]);
+    }
+    if(!cloture)return;
+    result.push({ticker,cloture,volume:volume||0,variation:variation||0});
+  });
+  return result;
+}
+
+function parseLignesBoc(txt){
+  // Tableau 1 BOC BRVM — format: "TICKER NOM... COURS_PREC OUV CLOT VAR% VOLUME..."
+  // Le ticker est TOUJOURS en 1ere position
+  // On ignore les lignes avec "/" (tableau quantites residuelles)
+  const TICKERS_SET=new Set(BRVM_ACTIONS.map(a=>a.s));
+  const results={};
+  const lignes=txt.split('\n');
+
+  for(let i=0;i<lignes.length;i++){
+    const l=lignes[i].trim();
+    if(!l)continue;
+
+    const ticker=l.split(/\s+/)[0].toUpperCase();
+    if(!TICKERS_SET.has(ticker))continue;
+    if(ticker in results)continue; // garder seulement le 1er (tableau 1)
+    if(l.includes('/'))continue;   // ignorer tableau 2 (quantites residuelles)
+
+    // Chercher la variation: -1,90 % ou 4,93 %
+    const varMatch=l.match(/(-?\d+[,.]\d+)\s*%/);
+    if(!varMatch)continue;
+    const variation=parseFloat(varMatch[1].replace(',','.'));
+
+    // Extraire les nombres AVANT le %
+    const avantVar=l.substring(0,varMatch.index);
+    const numRe=/\b(\d{1,3}(?:\s\d{3})*)\b/g;
+    const nums=[];
+    let nm;
+    while((nm=numRe.exec(avantVar))!==null){
+      const val=parseFloat(nm[1].replace(/\s/g,''));
+      if(val>=10&&val<=500000)nums.push(val);
+    }
+
+    if(nums.length>=3){
+      const cloture=nums[2]; // cours_prec=nums[0], ouv=nums[1], clot=nums[2]
+      const apresVar=l.substring(varMatch.index+varMatch[0].length);
+      const volMatch=apresVar.match(/\b(\d{1,3}(?:\s\d{3})*)\b/);
+      const volume=volMatch?parseFloat(volMatch[1].replace(/\s/g,'')):0;
+      if(cloture>0){
+        results[ticker]={ticker,cloture,volume:volume||0,variation};
+      }
+    }
+  }
+  return Object.values(results);
+}
+
+
+function parseLignes(txt,source='auto'){
+  if(source==='excel'||txt.includes('\t'))return parseLignesExcel(txt);
+  const bocResult=parseLignesBoc(txt);
+  if(bocResult.length>0)return bocResult;
+  return parseLignesExcel(txt);
+}
+
+function enregistrerEntrees(entrees,dateStr){
+  let nb=0;
+  entrees.forEach(({ticker,cloture,volume,variation})=>{
+    if(!historique[ticker])historique[ticker]=[];
+    const idx=historique[ticker].findIndex(e=>e.date===dateStr);
+    const entry={date:dateStr,cloture,volume,variation};
+    if(idx>=0)historique[ticker][idx]=entry;
+    else historique[ticker].push(entry);
+    historique[ticker].sort((a,b)=>a.date.localeCompare(b.date));
+    if(historique[ticker].length>52)historique[ticker]=historique[ticker].slice(-52);
+    nb++;
+  });
+  DB.set('brvm_hist4',historique);
+  return nb;
+}
+
+function importerCours(mode){
+  let txt='';
+  let dateStr=new Date().toISOString().slice(0,10);
+
+  if(mode==='excel'){
+    txt=document.getElementById('texteExcel').value.trim();
+    // Excel : date = aujourd'hui toujours
+  } else if(mode==='boc'){
+    txt=document.getElementById('texteBoc').value.trim();
+    dateStr=getDateBoc('boc');
+  } else {
+    txt=document.getElementById('texteAncienBoc').value.trim();
+    dateStr=getDateBoc('bocold');
+    if(!dateStr){
+      toast('Date non trouvée — entrez-la manuellement svp', true);
+      return;
+    }
+  }
+
+  if(!txt){toast('Rien à coller !',true);return;}
+  const entrees=mode==='excel'?parseLignes(txt,'excel'):parseLignes(txt,'boc');
+  if(!entrees.length){toast('Aucune action reconnue. Vérifiez le format.',true);return;}
+  const nb=enregistrerEntrees(entrees,dateStr);
+  DB.set('brvm_lastUpdate',new Date().toISOString());
+
+  // Vider toutes les zones de collage
+  document.getElementById('texteExcel').value='';
+  document.getElementById('texteBoc').value='';
+  document.getElementById('texteAncienBoc').value='';
+  document.getElementById('dateDetecteeBoc').style.display='none';
+  document.getElementById('dateBocManuelle').style.display='none';
+  document.getElementById('dateDetecteeAncien').style.display='none';
+  document.getElementById('dateAncienManuelle').style.display='none';
+
+  const labelDate=new Date(dateStr+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+  document.getElementById('dateBadge').textContent=(mode==='bocold'?'Hist. ':'')+labelDate;
+  fermerModal('modalColler');
+  toast('✅ '+nb+' cours importés — '+labelDate);
+  render('marche');
+}
+
+// ═══ CALCULS ═══
+function getMomentum(ticker,semaines){
+  const hist=historique[ticker];
+  if(!hist||hist.length<2)return null;
+  const sorted=[...hist].sort((a,b)=>a.date.localeCompare(b.date));
+  const dernier=sorted[sorted.length-1];
+  const target=new Date(dernier.date);
+  target.setDate(target.getDate()-semaines*7);
+  const targetStr=target.toISOString().slice(0,10);
+  let ref=null;
+  for(let i=sorted.length-2;i>=0;i--){
+    if(sorted[i].date<=targetStr){ref=sorted[i];break;}
+  }
+  if(!ref)ref=sorted[0];
+  if(!ref||!ref.cloture)return null;
+  return((dernier.cloture-ref.cloture)/ref.cloture)*100;
+}
+
+function getPhase(ticker){
+  const m1=getMomentum(ticker,1);
+  const m2=getMomentum(ticker,2);
+  const m4=getMomentum(ticker,4);
+  const hist=historique[ticker];
+  if(!hist||hist.length<2)return'Consolidation';
+  const sorted=[...hist].sort((a,b)=>a.date.localeCompare(b.date));
+  const recent=sorted.slice(-4);
+  const avg=recent.reduce((s,e)=>s+e.volume,0)/recent.length;
+  const last=sorted[sorted.length-1];
+  const volH=last.volume>avg*1.5;
+  if(m4===null)return'Consolidation';
+  if(m1>1&&m2>2&&m4>4)return'Hausse';
+  if(m1<-1&&m2<-2&&m4<-4)return'Baisse';
+  if(m4<0&&m1>0&&volH)return'Accumulation';
+  if(m4>5&&m1<0&&volH)return'Distribution';
+  return'Consolidation';
+}
+
+function getSignal(ticker){
+  // Calcul du signal ACHETER/VENDRE/SURVEILLER/ATTENDRE
+  const phase=getPhase(ticker);
+  const m1=getMomentum(ticker,1);
+  const m2=getMomentum(ticker,2);
+  const m4=getMomentum(ticker,4);
+  const vol=getVolSignal(ticker);
+  const d=getDernier(ticker);
+  if(!d)return{label:'—',cls:'signal-attendre',fort:false};
+
+  // Signaux haussiers
+  const haussier=(phase==='Hausse'||phase==='Accumulation');
+  const baissier=(phase==='Baisse'||phase==='Distribution');
+  const momPos=m1!==null&&m1>0&&m2!==null&&m2>0&&m4!==null&&m4>0;
+  const momNeg=m1!==null&&m1<0&&m2!==null&&m2<0&&m4!==null&&m4<0;
+  const volFort=(vol==='haut'||vol==='tres-haut');
+  const varPos=d.variation>0;
+  const varNeg=d.variation<0;
+
+  // Signal fort ACHETER: phase haussière + momentum positif + volume élevé
+  if(haussier&&momPos&&volFort)return{label:'⚡ ACHETER',cls:'signal-acheter',fort:true};
+  // Signal ACHETER normal
+  if(haussier&&momPos)return{label:'ACHETER',cls:'signal-acheter',fort:false};
+  // Signal fort VENDRE: distribution/baisse + momentum négatif + volume élevé
+  if(baissier&&momNeg&&volFort)return{label:'⚡ VENDRE',cls:'signal-vendre',fort:true};
+  // Signal VENDRE normal
+  if(baissier&&momNeg)return{label:'VENDRE',cls:'signal-vendre',fort:false};
+  // Signal SURVEILLER: signaux mixtes mais volume fort
+  if(volFort&&(varPos||haussier))return{label:'👀 SURVEILLER',cls:'signal-surveiller',fort:false};
+  // Défaut: attendre
+  return{label:'ATTENDRE',cls:'signal-attendre',fort:false};
+}
+
+function getScore(ticker){
+  const m1=getMomentum(ticker,1)||0;
+  const m2=getMomentum(ticker,2)||0;
+  const m4=getMomentum(ticker,4)||0;
+  const phase=getPhase(ticker);
+  const vol=getVolSignal(ticker);
+  let b=0;
+  if(phase==='Hausse')b=20;
+  if(phase==='Accumulation')b=10;
+  if(phase==='Distribution')b=-15;
+  if(phase==='Baisse')b=-20;
+  // Bonus volume
+  if(vol==='tres-haut')b+=10;
+  if(vol==='haut')b+=5;
+  // Bonus cohérence momentum (tous positifs = confirmation)
+  if(m1>0&&m2>0&&m4>0)b+=8;
+  if(m1<0&&m2<0&&m4<0)b-=8;
+  return Math.round(m1*1.5+m2*1.0+m4*0.5+b);
+}
+
+function getVolSignal(ticker){
+  const hist=historique[ticker];
+  if(!hist||hist.length<3)return'normal';
+  const sorted=[...hist].sort((a,b)=>a.date.localeCompare(b.date));
+  const last=sorted[sorted.length-1];
+  const prev=sorted.slice(-5,-1);
+  if(!prev.length||!last.volume)return'normal';
+  const avg=prev.reduce((s,e)=>s+e.volume,0)/prev.length;
+  if(!avg)return'normal';
+  const r=last.volume/avg;
+  if(r>=3)return'tres-haut';
+  if(r>=1.8)return'haut';
+  return'normal';
+}
+
+function getDernier(ticker){
+  const hist=historique[ticker];
+  if(!hist||!hist.length)return null;
+  return[...hist].sort((a,b)=>a.date.localeCompare(b.date)).slice(-1)[0];
+}
+
+// ═══ MARCHE ═══
+function renderMarche(){
+  const el=document.getElementById('tab-marche');
+  let nbH=0,nbB=0,nbN=0;
+  BRVM_ACTIONS.forEach(a=>{
+    const d=getDernier(a.s);
+    if(!d)return;
+    if(d.variation>0)nbH++;else if(d.variation<0)nbB++;else nbN++;
+  });
+  const avecData=BRVM_ACTIONS.filter(a=>getDernier(a.s)).length;
+
+  let html=`
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">Actions avec données</div><div class="stat-value accent">${avecData}/47</div></div>
+    <div class="stat-card"><div class="stat-label">En hausse</div><div class="stat-value green">${nbH}</div></div>
+    <div class="stat-card"><div class="stat-label">En baisse</div><div class="stat-value red">${nbB}</div></div>
+    <div class="stat-card"><div class="stat-label">Stables</div><div class="stat-value">${nbN}</div></div>
+  </div>
+  <input class="search-bar" type="text" placeholder="🔍 Rechercher..." value="${searchQ}" oninput="searchQ=this.value;renderMarche()"/>
+  <div id="detailPanel" class="detail-panel"></div>
+  <div class="table-wrap"><table><thead><tr>
+    <th onclick="setSort('ticker')">Ticker</th>
+    <th>Nom</th>
+    <th onclick="setSort('cours')">Cours</th>
+    <th onclick="setSort('var')">Var. Jour</th>
+    <th>Volume</th>
+    <th onclick="setSort('m1')">1 sem</th>
+    <th onclick="setSort('m2')">2 sem</th>
+    <th onclick="setSort('m4')">4 sem</th>
+    <th>Phase</th>
+    <th>Signal</th>
+  </tr></thead><tbody>`;
+
+  let rows=BRVM_ACTIONS.map(a=>{
+    const d=getDernier(a.s);
+    return{...a,d,m1:getMomentum(a.s,1),m2:getMomentum(a.s,2),m4:getMomentum(a.s,4),phase:getPhase(a.s),vol:getVolSignal(a.s)};
+  });
+  if(searchQ){const q=searchQ.toLowerCase();rows=rows.filter(r=>r.s.toLowerCase().includes(q)||r.n.toLowerCase().includes(q));}
+  rows.sort((a,b)=>{
+    const va=sortCol==='ticker'?a.s:sortCol==='cours'?(a.d?.cloture||0):sortCol==='var'?(a.d?.variation||0):sortCol==='m1'?(a.m1||0):sortCol==='m2'?(a.m2||0):(a.m4||0);
+    const vb=sortCol==='ticker'?b.s:sortCol==='cours'?(b.d?.cloture||0):sortCol==='var'?(b.d?.variation||0):sortCol==='m1'?(b.m1||0):sortCol==='m2'?(b.m2||0):(b.m4||0);
+    if(typeof va==='string')return sortDir*va.localeCompare(vb);
+    return sortDir*(va-vb);
+  });
+
+  rows.forEach(r=>{
+    const w=WYCKOFF[r.phase];
+    const vc=!r.d?'neu':r.d.variation>0?'pos':r.d.variation<0?'neg':'neu';
+    const vl=r.vol==='tres-haut'?'🔥 x3+':r.vol==='haut'?'⚡ x2':'—';
+    const vc2='vol-badge vol-'+r.vol;
+    const sig=getSignal(r.s);
+    const trClass=sig.fort?(sig.cls==='signal-acheter'?'signal-fort':'signal-fort-vente'):'';
+    const pulseClass=sig.fort?(sig.cls==='signal-acheter'?'pulse-green':'pulse-red'):'';
+    html+=`<tr onclick="toggleDetail('${r.s}')" class="${trClass}">
+      <td><span class="ticker-badge ${pulseClass}">${r.s}</span></td>
+      <td><div class="nom-cell">${r.n}</div></td>
+      <td><span class="cours-cell">${r.d?fmt(r.d.cloture):'—'}</span></td>
+      <td><span class="var-cell ${vc}">${r.d?fmtPct(r.d.variation):'—'}</span></td>
+      <td><span class="${vc2}">${vl}</span></td>
+      <td><span class="mom-cell ${r.m1===null?'mom-neu':r.m1>0?'mom-pos':'mom-neg'}">${r.m1!==null?fmtPct(r.m1):'—'}</span></td>
+      <td><span class="mom-cell ${r.m2===null?'mom-neu':r.m2>0?'mom-pos':'mom-neg'}">${r.m2!==null?fmtPct(r.m2):'—'}</span></td>
+      <td><span class="mom-cell ${r.m4===null?'mom-neu':r.m4>0?'mom-pos':'mom-neg'}">${r.m4!==null?fmtPct(r.m4):'—'}</span></td>
+      <td><span class="phase-badge" style="background:${w.bg};color:${w.color};border:1px solid ${w.border}">${w.icon} ${r.phase}</span></td>
+      <td><span class="signal-badge ${sig.cls}">${sig.label}</span></td>
+    </tr>`;
+  });
+  if(!rows.length)html+=`<tr><td colspan="9"><div class="no-data">Aucune action trouvée</div></td></tr>`;
+  html+=`</tbody></table></div>`;
+  el.innerHTML=html;
+  if(activeRow)toggleDetail(activeRow,true);
+}
+
+function setSort(col){
+  if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=-1;}
+  renderMarche();
+}
+
+function toggleDetail(ticker,force=false){
+  if(activeRow===ticker&&!force){
+    activeRow=null;
+    document.getElementById('detailPanel').classList.remove('open');
+    return;
+  }
+  activeRow=ticker;
+  const panel=document.getElementById('detailPanel');
+  const action=BRVM_ACTIONS.find(a=>a.s===ticker);
+  const d=getDernier(ticker);
+  const phase=getPhase(ticker);
+  const w=WYCKOFF[phase];
+  const WEEKS_OPTIONS=[1,2,4,8,12,26,52];
+
+  function buildMomGrid(){
+    const active=detailWeeks;
+    return active.map(wk=>{
+      const m=getMomentum(ticker,wk);
+      const cl=m===null?'':m>0?'mom-pos':m<0?'mom-neg':'';
+      return`<div class="mom-card"><div class="mom-card-label">${wk} semaine${wk>1?'s':''}</div><div class="mom-card-val ${cl}">${m!==null?fmtPct(m):'—'}</div></div>`;
+    }).join('');
+  }
+
+  const pillsHtml=WEEKS_OPTIONS.map(wk=>`<span class="weeks-pill ${detailWeeks.includes(wk)?'active':''}" onclick="toggleWeek(${wk})">${wk}s</span>`).join('');
+
+  panel.innerHTML=`
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">${action?.n||ticker}</div>
+        <div class="detail-sub"><span class="ticker-badge">${ticker}</span> ${d?'— '+fmt(d.cloture)+' FCFA — '+d.date:'— Pas de données'}</div>
+      </div>
+      <button class="close-btn" onclick="activeRow=null;document.getElementById('detailPanel').classList.remove('open')">✕</button>
+    </div>
+    <div class="wyckoff-box" style="background:${w.bg};border-color:${w.border}">
+      <div class="wyckoff-label" style="color:${w.color}">${w.icon} ${w.label}</div>
+      <div class="wyckoff-what">${w.what}</div>
+      <div class="wyckoff-conseil" style="color:${w.color}">👉 ${w.conseil}</div>
+      <div style="margin-top:8px;font-size:12px;color:var(--text2)">${w.attitude}</div>
+    </div>
+    <div style="margin-bottom:10px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Choisissez les fenêtres à afficher :</div>
+      <div class="weeks-pills" id="weeksPills">${pillsHtml}</div>
+    </div>
+    <div class="mom-grid" id="momGrid" style="grid-template-columns:repeat(${Math.min(detailWeeks.length,4)},1fr)">${buildMomGrid()}</div>
+    <button onclick="showTab('historique',document.querySelectorAll('.nav-btn')[3]);histTicker='${ticker}';renderHistorique()" style="margin-top:8px;background:var(--bg3);border:1px solid var(--border);color:var(--accent);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">📅 Voir l'historique complet →</button>
+  `;
+  panel.classList.add('open');
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+window.toggleWeek=function(wk){
+  if(detailWeeks.includes(wk)){
+    if(detailWeeks.length>1)detailWeeks=detailWeeks.filter(w=>w!==wk);
+  } else {
+    detailWeeks=[...detailWeeks,wk].sort((a,b)=>a-b);
+  }
+  if(activeRow)toggleDetail(activeRow,true);
+};
+
+// ═══ OPPORTUNITES ═══
+function renderOpportunites(){
+  const el=document.getElementById('tab-opportunites');
+  const avecData=BRVM_ACTIONS.filter(a=>getDernier(a.s));
+  if(!avecData.length){
+    el.innerHTML=`<div class="no-data" style="padding:60px"><div style="font-size:40px;margin-bottom:12px">📋</div><div style="font-size:16px;font-weight:700;margin-bottom:8px">Pas encore de données</div><div style="color:var(--text2)">Cliquez sur "Mettre à jour" pour importer vos premiers cours</div></div>`;
+    return;
+  }
+  const scored=avecData.map(a=>({...a,score:getScore(a.s),phase:getPhase(a.s),m1:getMomentum(a.s,1),m2:getMomentum(a.s,2),m4:getMomentum(a.s,4),d:getDernier(a.s)})).sort((a,b)=>b.score-a.score);
+
+  let html=`<div style="margin-bottom:16px"><div style="font-size:20px;font-weight:800;margin-bottom:4px">🎯 Meilleures Opportunités</div><div style="color:var(--text2);font-size:13px">Classement par score momentum + phase Wyckoff.</div></div>`;
+
+  scored.forEach((r,i)=>{
+    const w=WYCKOFF[r.phase];
+    const moms=[r.m1,r.m2,r.m4].map((m,j)=>m!==null?`<span class="opp-mom" style="background:${m>0?'rgba(16,185,129,0.2)':'rgba(239,68,68,0.2)'};color:${m>0?'var(--green)':'var(--red)'}">${fmtPct(m)} (${[1,2,4][j]}s)</span>`:'').join('');
+    html+=`<div class="opp-card">
+      <div class="opp-rank ${i<3?'top':''}">#${i+1}</div>
+      <div class="opp-info">
+        <div class="opp-name">${r.n}</div>
+        <div class="opp-ticker">${r.s} — ${r.d?fmt(r.d.cloture)+' FCFA':'—'}</div>
+        <div class="opp-moms">${moms}</div>
+      </div>
+      <div><span class="phase-badge" style="background:${w.bg};color:${w.color};border:1px solid ${w.border}">${w.icon} ${r.phase}</span></div>
+      <div class="opp-score"><div class="opp-score-val" style="color:${r.score>0?'var(--green)':r.score<0?'var(--red)':'var(--text2)'}">${r.score>0?'+':''}${r.score}</div><div class="opp-score-label">score</div></div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+// ═══ PORTEFEUILLE ═══
+function renderPortefeuilles(){
+  const el=document.getElementById('tab-portefeuilles');
+  const ptf=getPtfActif();
+
+  // Tabs des portefeuilles
+  let tabsHtml=portfolios.map(p=>`
+    <button class="ptf-tab ${p.id===activePtfId?'active':''}" onclick="switchPtf('${p.id}')">${p.nom}</button>
+  `).join('');
+  if(portfolios.length<3){
+    tabsHtml+=`<button class="ptf-add-btn" onclick="ajouterPortefeuille()">+ Nouveau</button>`;
+  }
+
+  // Calculs globaux
+  let tI=0,tV=0;
+  ptf.positions.forEach(p=>{
+    const d=getDernier(p.ticker);
+    tI+=p.prixAchat*p.qte;
+    tV+=d?d.cloture*p.qte:p.prixAchat*p.qte;
+  });
+  const tPV=tV-tI;
+  const tPct=tI?(tPV/tI)*100:0;
+
+  let html=`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+    <div style="font-size:20px;font-weight:800">💼 Portefeuilles</div>
+    <button class="btn-primary" onclick="ouvrirModalPosition()">➕ Ajouter</button>
+  </div>
+  <div class="ptf-tabs">${tabsHtml}</div>
+
+  <!-- Nom et paramètres du portefeuille actif -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:140px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Nom du portefeuille</div>
+      <input id="ptfNomEdit" value="${ptf.nom}" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:Syne,sans-serif;font-size:14px;font-weight:700;padding:6px 10px;width:100%" onchange="renommerPtf(this.value)">
+    </div>
+    <div style="min-width:100px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Target %</div>
+      <input type="number" value="${ptf.target}" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--green);font-family:Space Mono,monospace;font-size:14px;font-weight:700;padding:6px 10px;width:80px" onchange="maj_ptf_param('target',this.value)">
+    </div>
+    <div style="min-width:100px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Stop %</div>
+      <input type="number" value="${ptf.stop}" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--red);font-family:Space Mono,monospace;font-size:14px;font-weight:700;padding:6px 10px;width:80px" onchange="maj_ptf_param('stop',this.value)">
+    </div>
+    ${portfolios.length>1?`<button class="btn-danger" onclick="supprimerPortefeuille('${ptf.id}')" style="margin-top:16px">🗑 Supprimer</button>`:''}
+  </div>
+
+  <div class="ptf-summary">
+    <div class="ptf-card"><div class="ptf-card-label">Total Investi</div><div class="ptf-card-val">${fmt(tI)} <span style="font-size:11px;color:var(--text3)">FCFA</span></div></div>
+    <div class="ptf-card"><div class="ptf-card-label">Valeur Actuelle</div><div class="ptf-card-val">${fmt(tV)} <span style="font-size:11px;color:var(--text3)">FCFA</span></div></div>
+    <div class="ptf-card"><div class="ptf-card-label">Plus-Value</div><div class="ptf-card-val" style="color:${tPV>=0?'var(--green)':'var(--red)'}">${tPV>=0?'+':''}${fmt(tPV)} FCFA</div></div>
+    <div class="ptf-card"><div class="ptf-card-label">Performance</div><div class="ptf-card-val" style="color:${tPct>=0?'var(--green)':'var(--red)'}">${fmtPct(tPct)}</div></div>
+  </div>`;
+
+  if(!ptf.positions.length){
+    html+=`<div class="no-data" style="padding:60px">
+      <div style="font-size:40px;margin-bottom:12px">💼</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px">${ptf.nom} — vide</div>
+      <div style="color:var(--text2)">Cliquez sur "Ajouter" pour enregistrer vos titres</div>
+    </div>`;
+  } else {
+    ptf.positions.forEach(p=>{
+      const d=getDernier(p.ticker);
+      const cc=d?d.cloture:null;
+      const inv=p.prixAchat*p.qte;
+      const val=cc?cc*p.qte:null;
+      const pv=val!==null?val-inv:null;
+      const pvPct=pv!==null?(pv/inv)*100:null;
+      const tp=p.target||ptf.target;
+      const sp=p.stop||ptf.stop;
+      const pT=p.prixAchat*(1+tp/100);
+      const pS=p.prixAchat*(1-sp/100);
+      let prog=50,progColor='var(--text2)';
+      if(cc){const rng=pT-pS;prog=Math.min(100,Math.max(0,((cc-pS)/rng)*100));progColor=prog>70?'var(--green)':prog<30?'var(--red)':'var(--accent2)';}
+      let alertes='';
+      if(cc){
+        if(cc>=pT)alertes+=`<div class="alert-badge alert-target-badge">🎯 Objectif atteint ! Envisager de vendre</div>`;
+        else if(cc<=pS)alertes+=`<div class="alert-badge alert-stop-badge">🛑 Stop-loss déclenché — Protéger le capital</div>`;
+        else if(pvPct!==null&&pvPct>tp*0.75)alertes+=`<div class="alert-badge alert-warn-badge">⚠️ Proche de l'objectif — Surveiller</div>`;
+      }
+      const phase=getPhase(p.ticker);
+      const w=WYCKOFF[phase];
+      const sig=getSignal(p.ticker);
+      const m1=getMomentum(p.ticker,1);
+      const m2=getMomentum(p.ticker,2);
+      const m4=getMomentum(p.ticker,4);
+      const cardCls=cc&&cc>=pT?'alert-target':cc&&cc<=pS?'alert-stop':'';
+      const pulsePos=sig.fort&&sig.cls==='signal-acheter'?'pulse-green':'';
+      const pulseNeg=sig.fort&&sig.cls==='signal-vendre'?'pulse-red':'';
+      const momHtml=[m1,m2,m4].map((m,i)=>m!==null?`<span style="font-size:10px;background:${m>0?'rgba(16,185,129,0.2)':'rgba(239,68,68,0.2)'};color:${m>0?'var(--green)':'var(--red)'};padding:2px 8px;border-radius:4px;font-weight:700;font-family:Space Mono,monospace">${fmtPct(m)} ${[1,2,4][i]}s</span>`:'').join('');
+
+      html+=`<div class="pos-card ${cardCls} ${pulsePos} ${pulseNeg}">
+        <div class="pos-header">
+          <div>
+            <div class="pos-name">${p.nom||p.ticker}</div>
+            <div class="pos-ticker">${p.ticker} — ${p.qte} action${p.qte>1?'s':''} — ${p.date||'—'}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="pos-pv" style="color:${pv===null?'var(--text2)':pv>=0?'var(--green)':'var(--red)'}">${pv!==null?(pv>=0?'+':'')+fmt(pv)+' FCFA':'—'}</div>
+            <div class="pos-pv-pct" style="color:${pvPct===null?'var(--text2)':pvPct>=0?'var(--green)':'var(--red)'}">${pvPct!==null?fmtPct(pvPct):'—'}</div>
+            <div style="margin-top:4px"><span class="signal-badge ${sig.cls}">${sig.label}</span></div>
+          </div>
+        </div>
+        <div class="pos-details">
+          <div class="pos-detail-item"><div class="pos-detail-label">Prix achat</div><div class="pos-detail-val">${fmt(p.prixAchat)} FCFA</div></div>
+          <div class="pos-detail-item"><div class="pos-detail-label">Cours actuel</div><div class="pos-detail-val">${cc?fmt(cc)+' FCFA':'—'}</div></div>
+          <div class="pos-detail-item"><div class="pos-detail-label">Investi</div><div class="pos-detail-val">${fmt(inv)} FCFA</div></div>
+          <div class="pos-detail-item"><div class="pos-detail-label">Stop -${sp}%</div><div class="pos-detail-val" style="color:var(--red)">${fmt(pS)} FCFA</div></div>
+          <div class="pos-detail-item"><div class="pos-detail-label">Target +${tp}%</div><div class="pos-detail-val" style="color:var(--green)">${fmt(pT)} FCFA</div></div>
+          <div class="pos-detail-item"><div class="pos-detail-label">Phase</div><div class="pos-detail-val" style="color:${w.color}">${w.icon} ${phase}</div></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-labels"><span style="color:var(--red)">Stop ${fmt(pS)}</span><span style="color:var(--green)">Target ${fmt(pT)}</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${prog}%;background:${progColor}"></div></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">${momHtml}</div>
+        ${alertes}
+        <div style="text-align:right;margin-top:10px"><button onclick="supprimerPosition('${p.id}')" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer">🗑 Supprimer</button></div>
+      </div>`;
+    });
+  }
+  el.innerHTML=html;
+}
+
+function switchPtf(id){
+  activePtfId=id;
+  DB.set('brvm_activePtf',id);
+  renderPortefeuilles();
+}
+
+function ajouterPortefeuille(){
+  if(portfolios.length>=3){toast('Maximum 3 portefeuilles',true);return;}
+  const id='ptf_'+Date.now();
+  const lettres=['A','B','C'];
+  const nom='Portefeuille '+lettres[portfolios.length];
+  portfolios.push({id,nom,target:35,stop:10,positions:[]});
+  activePtfId=id;
+  savePtf();
+  renderPortefeuilles();
+  toast('Portefeuille créé');
+}
+
+function supprimerPortefeuille(id){
+  if(portfolios.length<=1){toast('Impossible de supprimer le dernier portefeuille',true);return;}
+  if(!confirm('Supprimer ce portefeuille et toutes ses positions ?'))return;
+  portfolios=portfolios.filter(p=>p.id!==id);
+  activePtfId=portfolios[0].id;
+  savePtf();
+  renderPortefeuilles();
+  toast('Portefeuille supprimé');
+}
+
+function renommerPtf(nom){
+  const ptf=getPtfActif();
+  ptf.nom=nom||ptf.nom;
+  savePtf();
+}
+
+function maj_ptf_param(key,val){
+  const ptf=getPtfActif();
+  ptf[key]=parseFloat(val)||ptf[key];
+  savePtf();
+}
+
+function ouvrirModalPosition(){function ouvrirModalPosition(){
+  const ptf=getPtfActif();
+  const sel=document.getElementById('ptfTicker');
+  sel.innerHTML=BRVM_ACTIONS.map(a=>`<option value="${a.s}">${a.s} — ${a.n}</option>`).join('');
+  document.getElementById('ptfQte').value='';
+  document.getElementById('ptfPrix').value='';
+  document.getElementById('ptfDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('ptfTarget').value=ptf.target;
+  document.getElementById('ptfStop').value=ptf.stop;
+  document.getElementById('modalPosition').classList.add('open');
+}
+
+function sauvegarderPosition(){
+  const ptf=getPtfActif();
+  const ticker=document.getElementById('ptfTicker').value;
+  const qte=parseInt(document.getElementById('ptfQte').value);
+  const prix=parseFloat(document.getElementById('ptfPrix').value);
+  const date=document.getElementById('ptfDate').value;
+  const target=parseFloat(document.getElementById('ptfTarget').value)||ptf.target;
+  const stop=parseFloat(document.getElementById('ptfStop').value)||ptf.stop;
+  if(!ticker||!qte||!prix||qte<=0||prix<=0){toast('Remplissez tous les champs',true);return;}
+  const action=BRVM_ACTIONS.find(a=>a.s===ticker);
+  ptf.positions.push({id:Date.now().toString(),ticker,qte,prixAchat:prix,date,nom:action?action.n:ticker,target,stop});
+  savePtf();
+  fermerModal('modalPosition');
+  toast('Position enregistrée dans '+ptf.nom);
+  renderPortefeuilles();
+}
+
+function supprimerPosition(id){
+  if(!confirm('Supprimer cette position ?'))return;
+  const ptf=getPtfActif();
+  ptf.positions=ptf.positions.filter(p=>p.id!==id);
+  savePtf();
+  renderPortefeuilles();
+}
+
+// ═══ HISTORIQUE ═══
+function renderHistorique(){
+  const el=document.getElementById('tab-historique');
+  const SEMAINES=[4,8,12,26,52];
+
+  const selectOptions=BRVM_ACTIONS.map(a=>`<option value="${a.s}" ${histTicker===a.s?'selected':''}>${a.s} — ${a.n}</option>`).join('');
+
+  let html=`
+  <div style="font-size:20px;font-weight:800;margin-bottom:16px">📅 Historique détaillé</div>
+  <div class="hist-controls">
+    <div class="form-group" style="margin-bottom:16px">
+      <label style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px;display:block">Action à analyser</label>
+      <select class="hist-select" id="histSelect" onchange="histTicker=this.value;renderHistorique()">
+        <option value="">-- Choisir une action --</option>
+        ${selectOptions}
+      </select>
+    </div>
+    <div class="weeks-slider-wrap">
+      <div class="weeks-slider-label">
+        <span style="color:var(--text2);font-size:12px">Profondeur historique</span>
+        <span style="color:var(--accent);font-weight:700;font-family:'Space Mono',monospace" id="weeksVal">${histWeeks} semaines</span>
+      </div>
+      <input type="range" class="weeks-slider" min="4" max="52" step="2" value="${histWeeks}" 
+        oninput="histWeeks=parseInt(this.value);document.getElementById('weeksVal').textContent=this.value+' semaines';renderHistoriqueData()">
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      ${SEMAINES.map(s=>`<span class="weeks-pill ${histWeeks===s?'active':''}" onclick="histWeeks=${s};renderHistorique()">${s} sem.</span>`).join('')}
+    </div>
+  </div>
+  <div id="histData"></div>`;
+
+  el.innerHTML=html;
+  if(histTicker)renderHistoriqueData();
+}
+
+function renderHistoriqueData(){
+  const el=document.getElementById('histData');
+  if(!histTicker){el.innerHTML='';return;}
+  const hist=historique[histTicker];
+  if(!hist||!hist.length){
+    el.innerHTML=`<div class="no-data">Aucune donnée pour ${histTicker}. Importez des cours d'abord.</div>`;
+    return;
+  }
+  const sorted=[...hist].sort((a,b)=>a.date.localeCompare(b.date));
+  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-histWeeks*7);
+  const cutStr=cutoff.toISOString().slice(0,10);
+  const filtered=sorted.filter(e=>e.date>=cutStr);
+  if(!filtered.length){el.innerHTML=`<div class="no-data">Aucune donnée dans cette fenêtre. Essayez une fenêtre plus large.</div>`;return;}
+
+  // Graphique SVG simple
+  const W=560,H=180,PL=50,PR=20,PT=20,PB=30;
+  const prices=filtered.map(e=>e.cloture);
+  const minP=Math.min(...prices),maxP=Math.max(...prices);
+  const rng=maxP-minP||1;
+  const xStep=(W-PL-PR)/(filtered.length-1||1);
+
+  const points=filtered.map((e,i)=>{
+    const x=PL+i*xStep;
+    const y=PT+H-PB-((e.cloture-minP)/rng)*(H-PT-PB);
+    return{x,y,e};
+  });
+
+  const polyline=points.map(p=>`${p.x},${p.y}`).join(' ');
+  const area=`${PL},${H-PB} ${polyline} ${PL+(filtered.length-1)*xStep},${H-PB}`;
+
+  // Labels dates (max 6)
+  const step=Math.max(1,Math.floor(filtered.length/6));
+  const dateLabels=filtered.filter((_,i)=>i%step===0||i===filtered.length-1).map((e,_,arr)=>{
+    const idx=filtered.indexOf(e);
+    const x=PL+idx*xStep;
+    const d=new Date(e.date+'T12:00:00');
+    return`<text x="${x}" y="${H}" font-size="9" fill="#475569" text-anchor="middle">${d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</text>`;
+  }).join('');
+
+  const chartHtml=`
+  <div class="chart-wrap">
+    <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text2)">Évolution du cours — ${histTicker} — ${histWeeks} dernières semaines</div>
+    <svg class="chart-svg" viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
+      <defs><linearGradient id="grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00d4aa" stop-opacity="0.3"/><stop offset="100%" stop-color="#00d4aa" stop-opacity="0"/></linearGradient></defs>
+      <polygon points="${area}" fill="url(#grad)"/>
+      <polyline points="${polyline}" fill="none" stroke="#00d4aa" stroke-width="2"/>
+      ${points.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="3" fill="#00d4aa"/>`).join('')}
+      <text x="${PL}" y="${PT+5}" font-size="9" fill="#475569">${fmt(maxP)}</text>
+      <text x="${PL}" y="${H-PB-2}" font-size="9" fill="#475569">${fmt(minP)}</text>
+      ${dateLabels}
+    </svg>
+  </div>`;
+
+  // Tableau momentums
+  const momRows=[1,2,4,8,12,26,52].filter(w=>w<=histWeeks).map(w=>{
+    const m=getMomentum(histTicker,w);
+    const cl=m===null?'color:var(--text3)':m>0?'color:var(--green)':m<0?'color:var(--red)':'color:var(--text3)';
+    return`<tr style="border-top:1px solid var(--border)">
+      <td style="padding:8px 14px;font-size:13px">${w} semaine${w>1?'s':''}</td>
+      <td style="padding:8px 14px;font-family:'Space Mono',monospace;font-size:13px;font-weight:700;${cl}">${m!==null?fmtPct(m):'—'}</td>
+      <td style="padding:8px 14px;font-size:12px;color:var(--text3)">${m===null?'Données insuffisantes':m>5?'Fort momentum haussier':m>0?'Momentum haussier':m>-5?'Légère baisse':'Forte baisse'}</td>
+    </tr>`;
+  }).join('');
+
+  // Tableau données brutes
+  const dataRows=[...filtered].reverse().map(e=>{
+    const vc=e.variation>0?'color:var(--green)':e.variation<0?'color:var(--red)':'color:var(--text2)';
+    return`<tr style="border-top:1px solid var(--border)">
+      <td style="padding:8px 14px;font-size:13px;font-family:'Space Mono',monospace">${e.date}</td>
+      <td style="padding:8px 14px;font-family:'Space Mono',monospace;font-weight:700">${fmt(e.cloture)}</td>
+      <td style="padding:8px 14px;font-family:'Space Mono',monospace;font-size:12px;${vc}">${fmtPct(e.variation)}</td>
+      <td style="padding:8px 14px;font-size:12px;color:var(--text2)">${fmt(e.volume)}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML=`
+  ${chartHtml}
+  <div class="hist-table-wrap" style="margin-bottom:16px">
+    <table><thead><tr>
+      <th>Fenêtre</th><th>Momentum</th><th>Interprétation</th>
+    </tr></thead><tbody>${momRows}</tbody></table>
+  </div>
+  <div class="hist-table-wrap">
+    <table><thead><tr>
+      <th>Date</th><th>Clôture (FCFA)</th><th>Variation</th><th>Volume</th>
+    </tr></thead><tbody>${dataRows}</tbody></table>
+  </div>`;
+}
+
+// ═══ GERER ═══
+function renderGerer(){
+  const el=document.getElementById('tab-gerer');
+  const last=DB.get('brvm_lastUpdate',null);
+  const nb=Object.keys(historique).length;
+  el.innerHTML=`
+  <div class="gerer-section">
+    <div class="gerer-title">⚙️ Paramètres par défaut</div>
+    <div class="settings-grid">
+      <div class="form-group"><label>Objectif de gain (%)</label><input type="number" id="setTarget" value="${settings.target}" min="5" max="200"></div>
+      <div class="form-group"><label>Stop-loss (%)</label><input type="number" id="setStop" value="${settings.stop}" min="2" max="50"></div>
+    </div>
+    <div style="margin-top:12px"><button class="btn-primary" onclick="sauvegarderSettings()">✅ Enregistrer</button></div>
+  </div>
+  <div class="gerer-section">
+    <div class="gerer-title">💾 Sauvegarde</div>
+    <div style="color:var(--text2);font-size:13px;margin-bottom:12px">
+      Dernière mise à jour : <strong>${last?new Date(last).toLocaleString('fr-FR'):'Jamais'}</strong><br>
+      Actions avec historique : <strong>${nb}</strong> / 47<br>
+      Positions en portefeuille : <strong>${portefeuille.length}</strong>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-success" onclick="exporterDonnees()">📥 Exporter JSON</button>
+      <label class="btn-secondary" style="cursor:pointer">📤 Importer JSON<input type="file" accept=".json" style="display:none" onchange="importerDonnees(this)"></label>
+    </div>
+  </div>
+  <div class="gerer-section">
+    <div class="gerer-title">🗑 Réinitialisation</div>
+    <div style="color:var(--text2);font-size:13px;margin-bottom:12px">Ces actions sont irréversibles.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-danger" onclick="effacerHistorique()">Effacer l'historique</button>
+      <button class="btn-danger" onclick="effacerPortefeuille()">Effacer le portefeuille</button>
+    </div>
+  </div>`;
+}
+
+function sauvegarderSettings(){
+  settings.target=parseFloat(document.getElementById('setTarget').value)||35;
+  settings.stop=parseFloat(document.getElementById('setStop').value)||10;
+  DB.set('brvm_set4',settings);toast('Paramètres enregistrés');
+}
+
+function exporterDonnees(){
+  const data={version:5,exportedAt:new Date().toISOString(),historique,portfolios,activePtfId,settings};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download='BRVM_sauvegarde_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();URL.revokeObjectURL(url);toast('Sauvegarde exportée');
+}
+
+function importerDonnees(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(data.historique){historique=data.historique;DB.set('brvm_hist4',historique);}
+      if(data.portfolios){portfolios=data.portfolios;DB.set('brvm_portfolios',portfolios);}
+      if(data.activePtfId){activePtfId=data.activePtfId;DB.set('brvm_activePtf',activePtfId);}
+      // Compat ancien format
+      if(data.portefeuille&&!data.portfolios){
+        portfolios=[{id:'ptf_1',nom:'Mon Portefeuille',target:35,stop:10,positions:data.portefeuille}];
+        activePtfId='ptf_1';
+        DB.set('brvm_portfolios',portfolios);DB.set('brvm_activePtf',activePtfId);
+      }
+      if(data.settings){settings=data.settings;DB.set('brvm_set4',settings);}
+      toast('Données importées');render('gerer');
+    }catch(err){toast('Fichier invalide',true);}
+  };
+  reader.readAsText(file);
+}
+
+function effacerHistorique(){if(!confirm('Effacer tout l\'historique ?'))return;historique={};DB.set('brvm_hist4',historique);toast('Historique effacé');render('marche');}
+function effacerPortefeuille(){if(!confirm('Effacer le portefeuille ?'))return;portefeuille=[];DB.set('brvm_ptf4',portefeuille);toast('Portefeuille effacé');renderPortefeuille();}
+
+function render(tab){
+  if(tab==='marche')renderMarche();
+  else if(tab==='opportunites')renderOpportunites();
+  else if(tab==='portefeuilles')renderPortefeuilles();
+  else if(tab==='historique')renderHistorique();
+  else if(tab==='gerer')renderGerer();
+}
+
+const last=DB.get('brvm_lastUpdate',null);
+if(last)document.getElementById('dateBadge').textContent=new Date(last).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+renderMarche();
+// Pré-charger le lien historique depuis détail marché
+window.histTicker=histTicker;
+</script>
+</body>
+</html>
